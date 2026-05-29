@@ -40,16 +40,37 @@ jobs:
           body: |
             ## C_HUD_Runway ${{ github.ref_name }}
 
-            ### Installation
-            1. Download `C_HUD_Install_${{ github.ref_name }}.exe`
-            2. Run it — MSFS Community folder is detected automatically
+            Conformal Boeing HGS-style HUD for Microsoft Flight Simulator 2020 and 2024.
+
+            ### ⬇️ Download
+            Download **`C_HUD_Install_${{ github.ref_name }}.exe`** below ↓
+
+            ### 🚀 Installation
+            1. Download `C_HUD_Install_${{ github.ref_name }}.exe` from the assets below
+            2. Double-click to run — MSFS Community folder is detected automatically
             3. Click **설치하기**
+            4. Launch MSFS and fly
 
-            ### Supported Aircraft
-            PMDG 737, PMDG 777, Boeing 787, iniBuilds A350, FBW A32NX,
-            Headwind A330-900, INI A330, Fenix A320
+            > Backups are created automatically before making any changes.
 
-            > Backups are created automatically before any changes are made.
+            ### ✈️ Supported Aircraft
+            | Aircraft | HUD Style |
+            |---|---|
+            | PMDG 737-800 / 737-700 / MAX | Boeing HGS |
+            | PMDG 777-300ER | Boeing HGS |
+            | Asobo / WT Boeing 787-10 | Boeing HGS |
+            | iniBuilds A350 | Airbus HUD |
+            | FBW A32NX | Airbus HUD |
+            | Headwind A330-900neo | Airbus HUD |
+            | INI A330 | Airbus HUD |
+            | Fenix A320 | Airbus HUD |
+
+            ### 📋 Requirements
+            - Microsoft Flight Simulator 2020 or 2024
+            - Windows 10 / 11 (64-bit)
+
+            ---
+            🌐 [Project Website](https://leekangmmin.github.io/20260529) · [README](https://github.com/leekangmmin/20260529#readme)
           draft: false
           prerelease: false
         env:

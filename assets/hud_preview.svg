@@ -259,6 +259,6 @@
   <rect y="504" width="900" height="16" fill="#000000" opacity="0.35"/>
   <text x="450" y="515" fill="#C8FF78" font-family="'Arial Narrow', Arial, sans-serif"
     font-size="10" text-anchor="middle" opacity="0.6">
-    C_HUD_Runway v3.4.0 — Boeing HGS 4000 style · Conformal runway projection · CAT III
+    C_HUD_Runway v1.0.0 — Boeing HGS 4000 style · Conformal runway projection · CAT III
   </text>
 </svg>

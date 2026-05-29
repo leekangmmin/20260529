@@ -13,7 +13,7 @@ Supports:
   · Transaction-safe rollback and crash recovery
 """
 
-__version__ = "2.7.0"
+__version__ = "1.0.0"
 __title__ = "C_HUD_Runway Installer"
 __author__ = "Conformal HUD Team"
 __description__ = "HUD/HGS Integration Management Platform for MSFS"

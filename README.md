@@ -4,7 +4,7 @@
 
 **Conformal Boeing HGS-style HUD for Microsoft Flight Simulator**
 
-[![Version](https://img.shields.io/badge/version-v3.4.0-3182F6?style=flat-square)](https://github.com/leekangmmin/20260529/releases)
+[![Version](https://img.shields.io/badge/version-v1.0.0-3182F6?style=flat-square)](https://github.com/leekangmmin/20260529/releases)
 [![MSFS](https://img.shields.io/badge/MSFS-2020%20%7C%202024-3182F6?style=flat-square&logo=microsoftedge&logoColor=white)](https://www.flightsimulator.com/)
 [![License](https://img.shields.io/badge/license-MIT-6B7280?style=flat-square)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-1241%20passing-00C073?style=flat-square)](https://github.com/leekangmmin/20260529)
