@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<!--
+  Conformal HUD – Runway Symbology  |  v2.0.0
+  Boeing HGS-style conformal HUD renderer.
+  
+  Uses conformal_renderer.js for all symbology drawing.
+  The WASM backend computes world-referenced projections and publishes
+  results via L: vars.
+-->
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>C_HUD Conformal HUD</title>
+  <style>
+    html, body {
+      margin:          0;
+      padding:         0;
+      width:           100%;
+      height:          100%;
+      overflow:        hidden;
+      background:      transparent !important;
+    }
+    canvas {
+      display:         block;
+      position:        absolute;
+      top:             0;
+      left:            0;
+      width:           100%;
+      height:          100%;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="hud_canvas"></canvas>
+  <!-- Load the conformal Boeing HGS-style renderer -->
+  <script src="conformal_renderer.js"></script>
+</body>
+</html>

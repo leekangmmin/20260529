@@ -1,0 +1,49 @@
+{
+  "content": [
+    {
+      "path": "SimObjects/Airplanes/C_HUD_Runway/panel/panel.cfg",
+      "size": 0,
+      "date": 0
+    },
+    {
+      "path": "SimObjects/Airplanes/C_HUD_Runway/panel/C_HUD_Runway.wasm",
+      "size": 0,
+      "date": 0
+    },
+    {
+      "path": "SimObjects/Airplanes/C_HUD_Runway/panel/HUD/hud_overlay.html",
+      "size": 0,
+      "date": 0
+    },
+    {
+      "path": "SimObjects/Airplanes/C_HUD_Runway/panel/HUD/hud_overlay.js",
+      "size": 0,
+      "date": 0
+    },
+    {
+      "path": "SimObjects/Airplanes/C_HUD_Runway/aircraft.cfg",
+      "size": 0,
+      "date": 0
+    },
+    {
+      "path": "SimObjects/Airplanes/C_HUD_Runway/model/C_HUD_Runway.xml",
+      "size": 0,
+      "date": 0
+    },
+    {
+      "path": "SimObjects/Airplanes/C_HUD_Runway/model/C_HUD_Runway.bin",
+      "size": 0,
+      "date": 0
+    },
+    {
+      "path": "SimObjects/Airplanes/C_HUD_Runway/texture/texture.cfg",
+      "size": 0,
+      "date": 0
+    },
+    {
+      "path": "SimObjects/Airplanes/C_HUD_Runway/texture/HUD_Overlay.png",
+      "size": 0,
+      "date": 0
+    }
+  ]
+}
