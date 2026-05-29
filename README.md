@@ -34,26 +34,19 @@
 
 ## Preview
 
-```
-  ┌─────────────────────────────────────────────────────────┐
-  │                                                         │
-  │  350kt ─┤              ┌───────────┐            ├─ FL050│
-  │         │              │  ─────●── │            │       │
-  │   ──────┤   GS ────────┼───────────┼──────  LOC ├───── │
-  │         │              │    [FPV]  │            │       │
-  │   ──────┤              │  ─────●── │            ├───── │
-  │                        └───────────┘                    │
-  │                                                         │
-  │               ╱▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔╲                  │
-  │             ╱       RUNWAY OUTLINE     ╲                │
-  │           ╱   ┌──────────────────┐       ╲             │
-  │         ╱     │   ↕  FLARE CUE  │         ╲           │
-  │       ╱───────┴──────────────────┴───────────╲         │
-  │                       ROLLOUT ──▶                       │
-  └─────────────────────────────────────────────────────────┘
-```
+<div align="center">
+  <img src="assets/hud_preview.svg" alt="C_HUD_Runway — Boeing HGS style conformal HUD preview" width="100%"/>
+</div>
 
-**[FPV]** Flight Path Vector &nbsp;·&nbsp; **GS / LOC** ILS confidence bars &nbsp;·&nbsp; **Runway** 8-corner conformal projection &nbsp;·&nbsp; **Flare** touchdown cue
+<div align="center">
+  <sub>
+    <b>FPV</b> Flight Path Vector &nbsp;·&nbsp;
+    <b>G/S · LOC</b> ILS confidence bars &nbsp;·&nbsp;
+    <b>Runway</b> 8-corner conformal projection &nbsp;·&nbsp;
+    <b>Flare cue</b> touchdown director &nbsp;·&nbsp;
+    <b>LAND 3 · CAT III</b> mode annunciator
+  </sub>
+</div>
 
 ---
 

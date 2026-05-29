@@ -1,203 +1,199 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400">
+<svg width="900" height="540" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 540">
   <defs>
-    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#0b1e3a"/>
+      <stop offset="55%"  stop-color="#0e2d50"/>
+      <stop offset="100%" stop-color="#1a3a60"/>
+    </linearGradient>
+    <linearGradient id="groundGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#1c140a"/>
+      <stop offset="100%" stop-color="#0d0a05"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2.2" result="blur"/>
       <feMerge>
         <feMergeNode in="blur"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
-    <filter id="glowStrong" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+    <filter id="glowStrong" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="blur"/>
       <feMerge>
         <feMergeNode in="blur"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
-    <pattern id="scanlines" patternUnits="userSpaceOnUse" width="800" height="4">
-      <rect x="0" y="0" width="800" height="1.5" fill="rgba(0,255,65,0.04)"/>
-      <rect x="0" y="1.5" width="800" height="2.5" fill="rgba(0,0,0,0)"/>
-    </pattern>
+    <radialGradient id="vignette" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="transparent"/>
+      <stop offset="100%" stop-color="#000008" stop-opacity="0.6"/>
+    </radialGradient>
   </defs>
 
-  <!-- Dark background -->
-  <rect x="0" y="0" width="800" height="400" fill="#080808"/>
+  <!-- BACKGROUND -->
+  <rect width="900" height="540" fill="#080e1a"/>
+  <rect width="900" height="310" fill="url(#skyGrad)"/>
+  <rect y="310" width="900" height="230" fill="url(#groundGrad)"/>
+  <rect y="295" width="900" height="30" fill="#142038" opacity="0.7"/>
 
-  <!-- Outer frame -->
-  <rect x="5" y="5" width="790" height="390" rx="6" fill="none" stroke="#00ff41" stroke-width="1" opacity="0.3"/>
-
-  <!-- Corner brackets -->
-  <g stroke="#00ff41" stroke-width="2" opacity="0.5" filter="url(#glow)">
-    <path d="M5,25 L5,5 L25,5"/>
-    <path d="M795,25 L795,5 L775,5"/>
-    <path d="M5,375 L5,395 L25,395"/>
-    <path d="M795,375 L795,395 L775,395"/>
+  <!-- Ground texture -->
+  <g stroke="#1a1208" stroke-width="1" opacity="0.4">
+    <line x1="0" y1="350" x2="900" y2="350"/>
+    <line x1="0" y1="400" x2="900" y2="400"/>
+    <line x1="0" y1="460" x2="900" y2="460"/>
+    <line x1="0" y1="510" x2="900" y2="510"/>
   </g>
 
-  <!-- Pitch ladder -->
-  <g stroke="#00ff41" stroke-width="0.6" opacity="0.25">
-    <line x1="80" y1="180" x2="720" y2="180"/>
-    <line x1="150" y1="195" x2="650" y2="195"/>
-    <line x1="230" y1="210" x2="570" y2="210"/>
-    <line x1="320" y1="225" x2="480" y2="225"/>
+  <!-- Approach lights -->
+  <g fill="#ffffaa" opacity="0.3">
+    <circle cx="450" cy="375" r="1.5"/>
+    <circle cx="450" cy="415" r="1.5"/>
+    <circle cx="450" cy="455" r="1.5"/>
+    <circle cx="430" cy="395" r="1.2"/><circle cx="470" cy="395" r="1.2"/>
+    <circle cx="415" cy="435" r="1.2"/><circle cx="485" cy="435" r="1.2"/>
+    <circle cx="400" cy="470" r="1.2"/><circle cx="500" cy="470" r="1.2"/>
+  </g>
+
+  <!-- PAPI lights -->
+  <circle cx="308" cy="368" r="2.5" fill="#ff4444" opacity="0.65"/>
+  <circle cx="324" cy="368" r="2.5" fill="#ff4444" opacity="0.65"/>
+  <circle cx="340" cy="368" r="2.5" fill="#ffffff" opacity="0.65"/>
+  <circle cx="356" cy="368" r="2.5" fill="#ffffff" opacity="0.65"/>
+
+  <!-- ════ HUD SYMBOLOGY ════ -->
+
+  <!-- CONFORMAL RUNWAY OUTLINE -->
+  <g filter="url(#glowStrong)">
+    <polygon points="352,312 548,312 628,490 272,490"
+      fill="none" stroke="#00e054" stroke-width="2.2" opacity="0.95"/>
+    <line x1="450" y1="312" x2="450" y2="490"
+      stroke="#00e054" stroke-width="1.2" stroke-dasharray="14,10" opacity="0.65"/>
+    <line x1="370" y1="420" x2="530" y2="420"
+      stroke="#00e054" stroke-width="1.5" opacity="0.5"/>
+    <line x1="355" y1="450" x2="545" y2="450"
+      stroke="#00e054" stroke-width="1.5" opacity="0.38"/>
+    <line x1="352" y1="318" x2="388" y2="318" stroke="#00e054" stroke-width="2" opacity="0.6"/>
+    <line x1="512" y1="318" x2="548" y2="318" stroke="#00e054" stroke-width="2" opacity="0.6"/>
+  </g>
+
+  <!-- PITCH LADDER -->
+  <g stroke="#00cc44" stroke-width="1.5" fill="none" filter="url(#glow)" opacity="0.82">
+    <line x1="300" y1="195" x2="370" y2="195"/>
+    <line x1="530" y1="195" x2="600" y2="195"/>
+    <line x1="330" y1="230" x2="388" y2="230"/>
+    <line x1="512" y1="230" x2="570" y2="230"/>
+    <!-- 0 deg horizon — brighter -->
+    <line x1="185" y1="268" x2="378" y2="268" stroke="#00ee55" stroke-width="2.2"/>
+    <line x1="522" y1="268" x2="715" y2="268" stroke="#00ee55" stroke-width="2.2"/>
+    <line x1="330" y1="305" x2="388" y2="305"/>
+    <line x1="512" y1="305" x2="570" y2="305"/>
+    <!-- Below-horizon dashes -->
+    <line x1="300" y1="338" x2="370" y2="338" stroke-dasharray="4,3" opacity="0.6"/>
+    <line x1="530" y1="338" x2="600" y2="338" stroke-dasharray="4,3" opacity="0.6"/>
   </g>
 
   <!-- Pitch numbers -->
-  <g fill="#00ff41" font-family="monospace" font-size="8" opacity="0.3">
-    <text x="68" y="182">05</text><text x="728" y="182">05</text>
-    <text x="138" y="197">10</text><text x="652" y="197">10</text>
+  <g fill="#00cc44" font-family="'Courier New', Courier, monospace" font-size="13" filter="url(#glow)" opacity="0.82">
+    <text x="276" y="199" text-anchor="end">10</text>
+    <text x="624" y="199">10</text>
+    <text x="306" y="234" text-anchor="end">5</text>
+    <text x="574" y="234">5</text>
+    <text x="306" y="309" text-anchor="end">-5</text>
+    <text x="574" y="309">-5</text>
+    <text x="276" y="342" text-anchor="end" opacity="0.6">-10</text>
+    <text x="624" y="342" opacity="0.6">-10</text>
   </g>
 
-  <!-- Horizon line -->
-  <g filter="url(#glow)">
-    <line x1="60" y1="180" x2="340" y2="180" stroke="#00ff41" stroke-width="1.5" opacity="0.5"/>
-    <line x1="460" y1="180" x2="740" y2="180" stroke="#00ff41" stroke-width="1.5" opacity="0.5"/>
-    <line x1="345" y1="180" x2="375" y2="180" stroke="#00ff41" stroke-width="2" opacity="0.6"/>
-    <line x1="425" y1="180" x2="455" y2="180" stroke="#00ff41" stroke-width="2" opacity="0.6"/>
+  <!-- FLIGHT PATH VECTOR -->
+  <g filter="url(#glowStrong)" stroke="#00ff66" fill="none" stroke-width="2.2">
+    <circle cx="450" cy="255" r="12"/>
+    <line x1="462" y1="255" x2="488" y2="255"/>
+    <line x1="412" y1="255" x2="438" y2="255"/>
+    <line x1="450" y1="243" x2="450" y2="232"/>
   </g>
 
-  <!-- Conformal Runway -->
-  <g filter="url(#glow)">
-    <polygon points="250,205 550,205 620,260 180,260" fill="rgba(0,255,65,0.04)" stroke="#00ff41" stroke-width="1.5" opacity="0.7">
-      <animate attributeName="opacity" values="0.7;0.5;0.7" dur="2s" repeatCount="indefinite"/>
-    </polygon>
-    <!-- Threshold markings -->
-    <g stroke="#00ff41" stroke-width="1" opacity="0.5">
-      <line x1="220" y1="245" x2="580" y2="245"/>
-      <line x1="210" y1="250" x2="590" y2="250"/>
-    </g>
-    <!-- Centerline -->
-    <line x1="400" y1="207" x2="400" y2="258" stroke="#00ff41" stroke-width="1" stroke-dasharray="4,4" opacity="0.4"/>
-    <!-- Touchdown zone markings -->
-    <rect x="360" y="235" width="80" height="3" fill="#00ff41" opacity="0.4"/>
-    <rect x="370" y="242" width="60" height="2" fill="#00ff41" opacity="0.3"/>
-    <!-- Flare cue -->
-    <rect x="385" y="210" width="30" height="5" fill="#00ff41" opacity="0.6" rx="2">
-      <animate attributeName="opacity" values="0.6;0.2;0.6" dur="1.2s" repeatCount="indefinite"/>
-    </rect>
+  <!-- BANK ANGLE INDICATOR -->
+  <g stroke="#00cc44" stroke-width="1.5" fill="none" filter="url(#glow)" opacity="0.78">
+    <path d="M 388 148 A 66 66 0 0 1 512 148"/>
+    <line x1="450" y1="143" x2="450" y2="131"/>
+    <line x1="410" y1="157" x2="404" y2="146"/>
+    <line x1="490" y1="157" x2="496" y2="146"/>
+    <line x1="392" y1="178" x2="383" y2="168"/>
+    <line x1="508" y1="178" x2="517" y2="168"/>
+    <line x1="385" y1="202" x2="374" y2="190"/>
+    <line x1="515" y1="202" x2="526" y2="190"/>
+    <polygon points="450,158 444,171 456,171" fill="#00cc44" stroke="none"/>
   </g>
 
-  <!-- Flight Path Vector -->
-  <g filter="url(#glowStrong)">
-    <circle cx="400" cy="195" r="6" fill="none" stroke="#00ff41" stroke-width="1.5" opacity="0.7"/>
-    <circle cx="400" cy="195" r="1.5" fill="#00ff41" opacity="0.8"/>
-    <line x1="400" y1="201" x2="400" y2="212" stroke="#00ff41" stroke-width="0.8" opacity="0.4"/>
-    <line x1="400" y1="189" x2="400" y2="183" stroke="#00ff41" stroke-width="0.8" opacity="0.4"/>
-    <line x1="393" y1="195" x2="387" y2="195" stroke="#00ff41" stroke-width="0.8" opacity="0.4"/>
-    <line x1="407" y1="195" x2="413" y2="195" stroke="#00ff41" stroke-width="0.8" opacity="0.4"/>
+  <!-- ILS GLIDESLOPE SCALE -->
+  <g filter="url(#glow)" opacity="0.88">
+    <line x1="148" y1="192" x2="148" y2="338" stroke="#00cc44" stroke-width="1.5"/>
+    <line x1="140" y1="265" x2="156" y2="265" stroke="#00cc44" stroke-width="2.2"/>
+    <line x1="141" y1="228" x2="155" y2="228" stroke="#00cc44" stroke-width="1.5"/>
+    <line x1="141" y1="302" x2="155" y2="302" stroke="#00cc44" stroke-width="1.5"/>
+    <line x1="139" y1="192" x2="157" y2="192" stroke="#00cc44" stroke-width="1.2" opacity="0.55"/>
+    <line x1="139" y1="338" x2="157" y2="338" stroke="#00cc44" stroke-width="1.2" opacity="0.55"/>
+    <!-- GS deviation diamond (slightly below center) -->
+    <polygon points="148,280 140,288 148,296 156,288"
+      fill="#00ff66" stroke="none" filter="url(#glowStrong)"/>
+    <text x="125" y="190" fill="#00cc44" font-family="'Courier New', monospace" font-size="11" text-anchor="end">G/S</text>
   </g>
 
-  <!-- Ghost FPV trail (phosphor persistence simulation) -->
-  <g fill="none" stroke="rgba(0,255,65,0.06)" stroke-width="1">
-    <circle cx="395" cy="192" r="6"/>
-    <circle cx="391" cy="190" r="5.5"/>
-    <circle cx="388" cy="188" r="5"/>
+  <!-- ILS LOCALISER SCALE -->
+  <g filter="url(#glow)" opacity="0.88">
+    <line x1="286" y1="503" x2="614" y2="503" stroke="#00cc44" stroke-width="1.5"/>
+    <line x1="450" y1="494" x2="450" y2="512" stroke="#00cc44" stroke-width="2.2"/>
+    <line x1="368" y1="496" x2="368" y2="510" stroke="#00cc44" stroke-width="1.5"/>
+    <line x1="532" y1="496" x2="532" y2="510" stroke="#00cc44" stroke-width="1.5"/>
+    <line x1="286" y1="496" x2="286" y2="510" stroke="#00cc44" stroke-width="1.2" opacity="0.55"/>
+    <line x1="614" y1="496" x2="614" y2="510" stroke="#00cc44" stroke-width="1.2" opacity="0.55"/>
+    <!-- LOC deviation diamond (slightly right) -->
+    <polygon points="468,503 460,495 468,487 476,495"
+      fill="#00ff66" stroke="none" filter="url(#glowStrong)"/>
+    <text x="450" y="526" fill="#00cc44" font-family="'Courier New', monospace" font-size="11" text-anchor="middle">LOC</text>
   </g>
 
-  <!-- ILS Localizer bar (left side) -->
-  <g filter="url(#glow)">
-    <!-- Glideslope bars -->
-    <rect x="85" y="130" width="5" height="20" fill="#00ff41" rx="1" opacity="0.5">
-      <animate attributeName="opacity" values="0.5;0.3;0.5" dur="0.8s" repeatCount="indefinite"/>
-    </rect>
-    <rect x="92" y="132" width="3" height="16" fill="#00ff41" rx="1" opacity="0.3"/>
-    <rect x="97" y="134" width="3" height="12" fill="#00ff41" rx="1" opacity="0.2"/>
-    <!-- Localizer diamond -->
-    <polygon points="400,125 405,135 395,135" fill="#00ff41" opacity="0.5">
-      <animate attributeName="opacity" values="0.5;0.2;0.5" dur="1.5s" repeatCount="indefinite"/>
-    </polygon>
+  <!-- FLARE CUE (chevron above touchdown zone) -->
+  <g filter="url(#glow)" opacity="0.9">
+    <polyline points="430,462 450,444 470,462"
+      stroke="#00ff66" stroke-width="2.8" fill="none"/>
+    <line x1="450" y1="444" x2="450" y2="432" stroke="#00ff66" stroke-width="2.8"/>
   </g>
 
-  <!-- Wind data -->
-  <g fill="#00ff41" font-family="monospace" font-size="9" opacity="0.4">
-    <text x="580" y="135">WIND 270/15KT</text>
+  <!-- SPEED BOX -->
+  <g filter="url(#glow)" opacity="0.88">
+    <rect x="38" y="243" width="86" height="40" fill="none" stroke="#00cc44" stroke-width="1.5" rx="2"/>
+    <text x="81" y="271" fill="#00ff66" font-family="'Courier New', monospace" font-size="24" font-weight="bold" text-anchor="middle">147</text>
+    <text x="38" y="240" fill="#00cc44" font-family="'Courier New', monospace" font-size="11">IAS  KT</text>
+    <text x="38" y="302" fill="#00cc44" font-family="'Courier New', monospace" font-size="12">GS  152</text>
   </g>
 
-  <!-- Altitude tape (left) -->
-  <g font-family="monospace" fill="#00ff41">
-    <rect x="18" y="140" width="55" height="100" fill="none" stroke="#00ff41" stroke-width="0.5" opacity="0.15"/>
-    <text x="22" y="152" font-size="10" opacity="0.4">045</text>
-    <text x="22" y="166" font-size="10" opacity="0.4">044</text>
-    <text x="22" y="180" font-size="10" opacity="0.4">043</text>
-    <line x1="18" y1="183" x2="25" y2="183" stroke="#00ff41" stroke-width="1" opacity="0.5"/>
-    <text x="22" y="198" font-size="14" font-weight="bold" opacity="0.8">042</text>
-    <text x="50" y="198" font-size="8" opacity="0.5">FL</text>
-    <text x="22" y="212" font-size="10" opacity="0.4">041</text>
-    <!-- Vertical speed indicator -->
-    <text x="22" y="230" font-size="8" opacity="0.3">+800</text>
-    <text x="35" y="230" font-size="7" opacity="0.2">fpm</text>
+  <!-- ALTITUDE BOX -->
+  <g filter="url(#glow)" opacity="0.88">
+    <rect x="776" y="243" width="86" height="40" fill="none" stroke="#00cc44" stroke-width="1.5" rx="2"/>
+    <text x="819" y="271" fill="#00ff66" font-family="'Courier New', monospace" font-size="24" font-weight="bold" text-anchor="middle">1450</text>
+    <text x="776" y="240" fill="#00cc44" font-family="'Courier New', monospace" font-size="11">ALT  FT</text>
+    <text x="776" y="302" fill="#00cc44" font-family="'Courier New', monospace" font-size="12">V/S -720</text>
   </g>
 
-  <!-- Speed tape (right) -->
-  <g font-family="monospace" fill="#00ff41">
-    <rect x="730" y="140" width="55" height="100" fill="none" stroke="#00ff41" stroke-width="0.5" opacity="0.15"/>
-    <text x="735" y="152" font-size="10" opacity="0.4">140</text>
-    <text x="735" y="166" font-size="10" opacity="0.4">141</text>
-    <text x="735" y="180" font-size="10" opacity="0.4">142</text>
-    <line x1="745" y1="183" x2="755" y2="183" stroke="#00ff41" stroke-width="1" opacity="0.5"/>
-    <text x="735" y="198" font-size="14" font-weight="bold" opacity="0.8">143</text>
-    <text x="763" y="198" font-size="8" opacity="0.5">kt</text>
-    <text x="735" y="212" font-size="10" opacity="0.4">144</text>
-    <!-- Mach number -->
-    <text x="735" y="230" font-size="8" opacity="0.3">M.24</text>
+  <!-- MODE ANNUNCIATOR -->
+  <g filter="url(#glow)" opacity="0.92">
+    <text x="330" y="116" fill="#00ff66" font-family="'Courier New', monospace" font-size="15" font-weight="bold" text-anchor="middle">LAND 3</text>
+    <text x="450" y="116" fill="#00cc44" font-family="'Courier New', monospace" font-size="15" text-anchor="middle">|</text>
+    <text x="570" y="116" fill="#00ff66" font-family="'Courier New', monospace" font-size="15" font-weight="bold" text-anchor="middle">CAT III</text>
+    <!-- Subtle box -->
+    <rect x="258" y="100" width="384" height="24" fill="none" stroke="#00cc44" stroke-width="0.8" opacity="0.4" rx="2"/>
   </g>
 
-  <!-- Heading scale -->
-  <g font-family="monospace" fill="#00ff41" opacity="0.5">
-    <rect x="200" y="55" width="400" height="20" rx="2" fill="none" stroke="#00ff41" stroke-width="0.3" opacity="0.1"/>
-    <text x="220" y="68" font-size="9" opacity="0.3">350</text>
-    <text x="253" y="68" font-size="9" opacity="0.3">355</text>
-    <line x1="283" y1="58" x2="283" y2="63" stroke="#00ff41" opacity="0.3"/>
-    <text x="288" y="68" font-size="10" font-weight="bold" opacity="0.6">000</text>
-    <line x1="318" y1="58" x2="318" y2="63" stroke="#00ff41" opacity="0.3"/>
-    <text x="323" y="68" font-size="9" opacity="0.3">005</text>
-    <text x="356" y="68" font-size="9" opacity="0.3">010</text>
-    <!-- Heading bug -->
-    <polygon points="300,75 305,70 295,70" fill="#00ff41" opacity="0.6">
-      <animate attributeName="opacity" values="0.6;0.2;0.6" dur="1s" repeatCount="indefinite"/>
-    </polygon>
+  <!-- RADIO ALTITUDE -->
+  <g filter="url(#glow)" opacity="0.9">
+    <text x="360" y="533" fill="#00ff66" font-family="'Courier New', monospace" font-size="18" font-weight="bold" text-anchor="middle">RA  180</text>
+    <text x="560" y="533" fill="#00cc44" font-family="'Courier New', monospace" font-size="14" text-anchor="middle">DH  50</text>
   </g>
 
-  <!-- Bottom status bar -->
-  <g font-family="monospace" fill="#00ff41" opacity="0.4">
-    <line x1="15" y1="370" x2="785" y2="370" stroke="#00ff41" stroke-width="0.5"/>
-    <text x="25" y="383" font-size="8">HGS 4000</text>
-    <text x="100" y="383" font-size="8">CAT III</text>
-    <text x="165" y="383" font-size="8">DH 0ft</text>
-    <!-- ILS confidence dots -->
-    <text x="240" y="383" font-size="8">GS ████▒▒</text>
-    <text x="320" y="383" font-size="8">LOC ████▒▒</text>
-    <!-- Radio altitude -->
-    <text x="420" y="383" font-size="8">RA 420</text>
-    <!-- Ground roll guidance -->
-    <text x="500" y="383" font-size="8">ROLLOUT ARMED</text>
-    <text x="650" y="383" font-size="8">APPR LNAV</text>
-    <text x="730" y="383" font-size="8">12:34Z</text>
-  </g>
+  <!-- VIGNETTE -->
+  <rect width="900" height="540" fill="url(#vignette)"/>
 
-  <!-- Animated ground speed indicator -->
-  <g font-family="monospace" fill="#00ff41" opacity="0.3">
-    <text x="580" y="155" font-size="8">GS 135kt</text>
-  </g>
-
-  <!-- Annunciators -->
-  <g font-family="monospace" fill="#00ff41" opacity="0.35">
-    <text x="320" y="100" font-size="8">LOC CAPTURE</text>
-    <text x="440" y="100" font-size="8">G/S CAPTURE</text>
-  </g>
-
-  <!-- Scanline overlay -->
-  <rect x="0" y="0" width="800" height="400" fill="url(#scanlines)" opacity="0.5"/>
-
-  <!-- Subtle flicker -->
-  <rect x="0" y="0" width="800" height="400" fill="rgba(0,0,0,0.01)">
-    <animate attributeName="opacity" values="0;0.015;0;0.01;0" dur="0.4s" repeatCount="indefinite"/>
-  </rect>
-
-  <!-- Vignette -->
-  <radialGradient id="vignette" cx="50%" cy="50%" r="70%">
-    <stop offset="0%" stop-color="rgba(0,0,0,0)"/>
-    <stop offset="100%" stop-color="rgba(0,0,0,0.4)"/>
-  </radialGradient>
-  <rect x="0" y="0" width="800" height="400" fill="url(#vignette)"/>
+  <!-- WATERMARK -->
+  <text x="858" y="536" fill="#00cc44" font-family="'Courier New', monospace"
+    font-size="10" text-anchor="end" opacity="0.25">C_HUD_Runway v3.4.0</text>
 </svg>
