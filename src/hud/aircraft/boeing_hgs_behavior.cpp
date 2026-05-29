@@ -96,6 +96,11 @@ void BoeingHGSBehavior::compute_flare(
     flare->groundspeed_ms    = ctx.ac_groundspeed_ms;
     flare->gs_deviation_deg  = gs_error_deg;
 
+    // Per-aircraft flare constant override from profile
+    // When set (> 0.0), flare_compute() uses this instead of the default 0.10
+    flare->flare_constant_override = (profile->flare_constant > 0.0)
+        ? profile->flare_constant : 0.0;
+
     flare_compute(flare, ctx.dt_s);
 
     // Use profile-tuned Boeing flare parameters

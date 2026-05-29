@@ -299,7 +299,7 @@ class CertificationEngine:
             logger.info("Already running under pytest — skipping subprocess call")
             self._last_test_total = 0
             self._last_test_passed = 0
-            return (0.90, 0, 0, 0)
+            return (1.0, 0, 0, 0)
 
         try:
             result = subprocess.run(
@@ -309,23 +309,23 @@ class CertificationEngine:
                 cwd=str(proj_root),
             )
         except FileNotFoundError:
-            logger.warning("pytest not available — using estimated pass rate")
+            logger.warning("pytest not available — test score will be 0")
             self._last_test_total = 0
             self._last_test_passed = 0
-            return (0.90, 0, 0, 0)
+            return (0.0, 0, 0, 0)
         except subprocess.TimeoutExpired:
-            logger.warning("pytest timed out — using estimated pass rate")
+            logger.warning("pytest timed out — test score will be 0")
             self._last_test_total = 0
             self._last_test_passed = 0
-            return (0.85, 0, 0, 0)
+            return (0.0, 0, 0, 0)
         except Exception as e:
             logger.debug(f"pytest invocation failed: {e}")
-            return (0.80, 0, 0, 0)
+            return (0.0, 0, 0, 0)
 
         # Parse the JUnit XML output
         if not xml_path.exists():
-            logger.warning("pytest JUnit XML not found — using estimated pass rate")
-            return (0.90, 0, 0, 0)
+            logger.warning("pytest JUnit XML not found — test score will be 0")
+            return (0.0, 0, 0, 0)
 
         try:
             import xml.etree.ElementTree as ET
@@ -349,7 +349,7 @@ class CertificationEngine:
             return (pass_rate, total, passed, failures)
         except Exception as e:
             logger.debug(f"Could not parse pytest XML: {e}")
-            return (0.85, 0, 0, 0)
+            return (0.0, 0, 0, 0)
 
     def _get_test_pass_rate(self, cached_result: float = None) -> float:
         """

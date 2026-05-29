@@ -36,10 +36,15 @@ static const AircraftRegistryEntry kAircraftRegistry[] = {
     { "INIBUILDS A350", HudAircraftCategory::AIRBUS_HUD },
     { "AIRBUS A350",    HudAircraftCategory::AIRBUS_HUD },
     { "A350",           HudAircraftCategory::AIRBUS_HUD },
-    { "INI A330",       HudAircraftCategory::BOEING_HGS },  // fallback to Boeing
-    { "HEADWIND A330",  HudAircraftCategory::BOEING_HGS },
+    { "AIRBUS A330",    HudAircraftCategory::AIRBUS_HUD },
+    { "INI A330",       HudAircraftCategory::AIRBUS_HUD },  // fallback to Boeing
+    { "HEADWIND A330",  HudAircraftCategory::AIRBUS_HUD },
 
+    // --- Fenix ---
+    { "FENIX A320",   HudAircraftCategory::AIRBUS_HUD },
     // --- Boeing PMDG ---
+    // --- PMDG 737 MAX ---
+    { "PMDG 737 MAX", HudAircraftCategory::BOEING_HGS },
     { "PMDG 737",       HudAircraftCategory::BOEING_HGS },
     { "PMDG 777",       HudAircraftCategory::BOEING_HGS },
 
@@ -48,7 +53,8 @@ static const AircraftRegistryEntry kAircraftRegistry[] = {
     { "WT_787",         HudAircraftCategory::BOEING_HGS },
 
     // --- FBW ---
-    { "FBW A32NX",      HudAircraftCategory::BOEING_HGS },
+    { "FBW",            HudAircraftCategory::AIRBUS_HUD },
+    { "FBW A32NX",      HudAircraftCategory::AIRBUS_HUD },
 
     // --- Sentinel ---
     { 0,                HudAircraftCategory::UNKNOWN },
@@ -208,8 +214,4 @@ IHudAircraftBehavior* hud_behavior_create(const char* aircraft_id) {
             // For unsupported aircraft, use the Boeing fallback
             return &g_boeing_behavior;
     }
-}
-
-HudAircraftCategory hud_detect_category(const char* aircraft_id) {
-    return aircraft_detect(aircraft_id).category;
 }

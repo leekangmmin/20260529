@@ -21,6 +21,11 @@
 //    · PMDG 777-300ER     — L:Vars for HUD power + deploy animation
 //    · WT/Asobo 787-10    — L:Vars/panel state for HUD deployment
 //    · iniBuilds A350      — Native HUD with deployment L:Vars
+//
+//  v3.0.1 — FIX: Lazy token resolution.  Deploy L:Var names in the config
+//  are now resolved to GAUGE_VAR tokens at runtime via gauge_get_var_by_name(),
+//  so the deployment state machine can actually read the aircraft's HUD
+//  animation L:Vars instead of always reporting DEPLOYED.
 // ============================================================================
 
 #include "../module.h"
@@ -56,7 +61,10 @@ typedef struct HUDDeploymentState {
     bool            use_panel_state;        // Use panel state (787 style)
     bool            use_model_animation;    // Use model animation percentage
 
-    // --- L:Var token names (resolved at POST_INSTALL) ---
+    // --- Active config (for lazy token resolution) ---
+    const struct HUDDeployConfig* config;   // Currently active deploy config
+
+    // --- L:Var tokens (resolved lazily via config name strings) ---
     GAUGE_VAR       tok_deploy_lvar;        // Deployment animation L:Var
     GAUGE_VAR       tok_deploy_pct;         // Deployment percentage (if available)
 
@@ -107,6 +115,8 @@ static inline void hud_deployment_init(HUDDeploymentState* ds) {
     ds->use_deploy_lvar      = false;
     ds->use_panel_state      = false;
     ds->use_model_animation  = false;
+
+    ds->config               = 0;
 
     ds->tok_deploy_lvar      = 0;
     ds->tok_deploy_pct       = 0;
@@ -188,5 +198,42 @@ static inline FLOAT64 hud_deployment_fraction(const HUDDeploymentState* ds) {
 ///
 /// @param ds   Deployment state to log
 void hud_deployment_debug_log(const HUDDeploymentState* ds);
+
+// ============================================================================
+//  9.  Lazy token resolution helper
+// ============================================================================
+
+/// Resolve deploy L:Var tokens from the active config using MSFS's
+/// gauge_get_var_by_name().  This avoids the cross-TU visibility problem
+/// that prevented module.cpp from registering these tokens in POST_INSTALL.
+///
+/// Call this every frame until all tokens are non-zero.
+///
+/// @param ds   [in/out] Deployment state with config already set
+static inline void hud_deployment_resolve_tokens(HUDDeploymentState* ds) {
+    if (ds == 0 || ds->config == 0) return;
+
+    // Resolve deploy animation L:Var
+    if (ds->tok_deploy_lvar == 0 && ds->config->deploy_lvar_name != 0) {
+        ds->tok_deploy_lvar = gauge_get_var_by_name(
+            ds->config->deploy_lvar_name, "number");
+        if (ds->tok_deploy_lvar != 0) {
+            MSFS_Log("[C_HUD] Deploy token resolved: '%s' -> %p",
+                     ds->config->deploy_lvar_name,
+                     (void*)(size_t)ds->tok_deploy_lvar);
+        }
+    }
+
+    // Resolve deploy percentage L:Var (A350-specific)
+    if (ds->tok_deploy_pct == 0 && ds->config->deploy_pct_lvar != 0) {
+        ds->tok_deploy_pct = gauge_get_var_by_name(
+            ds->config->deploy_pct_lvar, "number");
+        if (ds->tok_deploy_pct != 0) {
+            MSFS_Log("[C_HUD] Deploy PCT token resolved: '%s' -> %p",
+                     ds->config->deploy_pct_lvar,
+                     (void*)(size_t)ds->tok_deploy_pct);
+        }
+    }
+}
 
 #endif // C_HUD_HUD_DEPLOYMENT_H

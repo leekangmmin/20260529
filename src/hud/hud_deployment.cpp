@@ -9,6 +9,10 @@
 //    · PMDG 777 — Uses L:HUD_POWER_SWITCH + deploy animation L:Var
 //    · WT 787  — Uses panel state / deploy animation L:Var
 //    · A350    — Uses native HUD deployment L:Var
+//
+//  v3.0.1 — FIX: Lazy token resolution so deploy L:Vars (L:AS1001_HUD,
+//  L:HUD_DEPLOY, L:A350_HUD_DEPLOY, L:A350_HUD_DEPLOY_PCT) are actually
+//  resolved to GAUGE_VAR tokens and readable by the state machine.
 // ============================================================================
 
 #include "hud/hud_deployment.h"
@@ -79,9 +83,9 @@ static const HUDDeployConfig kDeployConfigs[] = {
         .stow_threshold        = 0.20,
         .use_panel_state       = false,
     },
-    // --- FBW A32NX — Generic HUD fallback (always deployed) ---
+    // --- FBW — Generic HUD fallback (always deployed) ---
     {
-        .aircraft_prefix       = "FBW A32NX",
+        .aircraft_prefix       = "FBW",
         .has_power_switch      = true,
         .has_deploy_animation  = false,
         .power_lvar_name       = "L:HUD_POWER_SWITCH",
@@ -94,6 +98,18 @@ static const HUDDeployConfig kDeployConfigs[] = {
     // --- HEADWIND A330 ---
     {
         .aircraft_prefix       = "HEADWIND A330",
+        .has_power_switch      = true,
+        .has_deploy_animation  = false,
+        .power_lvar_name       = "L:HUD_POWER_SWITCH",
+        .deploy_lvar_name       = 0,
+        .deploy_pct_lvar       = 0,
+        .deploy_threshold      = 0.5,
+        .stow_threshold        = 0.5,
+        .use_panel_state       = false,
+    },
+    // --- INI A330 — Uses HUD_POWER_SWITCH + deploy animation ---
+    {
+        .aircraft_prefix       = "INI A330",
         .has_power_switch      = true,
         .has_deploy_animation  = false,
         .power_lvar_name       = "L:HUD_POWER_SWITCH",
@@ -159,34 +175,51 @@ void hud_deployment_update(HUDDeploymentState* ds,
 
         // Look up aircraft-specific config
         const HUDDeployConfig* cfg = hud_deploy_config_for_aircraft(aircraft_id);
+        ds->config = cfg;
+
         if (cfg != 0) {
             ds->use_power_lvar  = cfg->has_power_switch;
             ds->use_deploy_lvar = cfg->has_deploy_animation;
             ds->use_panel_state = cfg->use_panel_state;
 
-            // If the aircraft has a deploy animation but we don't have
-            // tokens yet (resolved lazily), default to deployed.
+            // Default to deployed while tokens are unresolved
             ds->deployment_fraction = 1.0;
             ds->phase = HUD_DEPLOY_DEPLOYED;
+
+            // Try to resolve tokens immediately
+            hud_deployment_resolve_tokens(ds);
+
+            MSFS_Log("[C_HUD] Deploy init: aircraft='%s'  power_lvar=%d  deploy_lvar=%d  "
+                     "deploy_var='%s'  pct_var='%s'",
+                     aircraft_id ? aircraft_id : "(null)",
+                     (int)ds->use_power_lvar,
+                     (int)ds->use_deploy_lvar,
+                     cfg->deploy_lvar_name ? cfg->deploy_lvar_name : "(none)",
+                     cfg->deploy_pct_lvar ? cfg->deploy_pct_lvar : "(none)");
         } else {
             // Unknown aircraft — assume always deployed
             ds->use_power_lvar = true;
             ds->deployment_fraction = 1.0;
             ds->phase = HUD_DEPLOY_DEPLOYED;
+
+            MSFS_Log("[C_HUD] Deploy init: aircraft='%s'  (unknown, assuming deployed)",
+                     aircraft_id ? aircraft_id : "(null)");
         }
 
         ds->initialised = true;
         ds->valid = true;
-
-        MSFS_Log("[C_HUD] Deploy init: aircraft='%s'  power_lvar=%d  deploy_lvar=%d",
-                 aircraft_id ? aircraft_id : "(null)",
-                 (int)ds->use_power_lvar,
-                 (int)ds->use_deploy_lvar);
     }
 
     // Store previous phase
     ds->prev_phase = ds->phase;
     ds->dt_s = dt_s;
+
+    // --- Lazy token resolution (retry every frame until resolved) ---
+    if (ds->config != 0 && ds->use_deploy_lvar &&
+        (ds->tok_deploy_lvar == 0 ||
+         (ds->config->deploy_pct_lvar != 0 && ds->tok_deploy_pct == 0))) {
+        hud_deployment_resolve_tokens(ds);
+    }
 
     // Read electrical power state (default to true)
     ds->electrical_power = true;
@@ -197,11 +230,12 @@ void hud_deployment_update(HUDDeploymentState* ds,
     // Track deployment fraction
     FLOAT64 deploy_raw = 1.0;
 
+    // Read deployment animation L:Var (if token is resolved)
     if (ds->use_deploy_lvar && ds->tok_deploy_lvar != 0) {
-        // Read deployment animation L:Var
         const FLOAT64 raw = module_read_f64(ds->tok_deploy_lvar);
         if (raw == raw) {  // NaN check
             deploy_raw = raw;
+
         }
     }
 
@@ -222,14 +256,16 @@ void hud_deployment_update(HUDDeploymentState* ds,
         if (ds->deployment_fraction > 1.0) ds->deployment_fraction = 1.0;
     }
 
-    // Determine phase from deployment fraction
+    // Determine phase from deployment fraction using config thresholds
     const HUDDeployPhase prev = ds->phase;
+    const FLOAT64 deploy_thresh = (ds->config != 0) ? ds->config->deploy_threshold : 0.85;
+    const FLOAT64 stow_thresh   = (ds->config != 0) ? ds->config->stow_threshold   : 0.15;
 
     if (!ds->power_on) {
         ds->phase = HUD_DEPLOY_STOWED;
-    } else if (ds->deployment_fraction >= 0.85) {
+    } else if (ds->deployment_fraction >= deploy_thresh) {
         ds->phase = HUD_DEPLOY_DEPLOYED;
-    } else if (ds->deployment_fraction <= 0.15) {
+    } else if (ds->deployment_fraction <= stow_thresh) {
         ds->phase = HUD_DEPLOY_STOWED;
     } else {
         ds->phase = HUD_DEPLOY_TRANSITION;
@@ -239,8 +275,10 @@ void hud_deployment_update(HUDDeploymentState* ds,
     if (ds->phase != prev) {
         ds->transition_timer_s = 0.0;
         ds->frames_since_change = 0;
-        MSFS_Log("[C_HUD] Deploy phase: %d -> %d  (fraction=%.2f)",
-                 (int)prev, (int)ds->phase, ds->deployment_fraction);
+        MSFS_Log("[C_HUD] Deploy phase: %d -> %d  (fraction=%.3f  power=%d  "
+                 "deploy_thresh=%.2f  stow_thresh=%.2f)",
+                 (int)prev, (int)ds->phase, ds->deployment_fraction,
+                 (int)ds->power_on, deploy_thresh, stow_thresh);
     } else {
         ds->transition_timer_s += dt_s;
         ds->frames_since_change++;
@@ -249,7 +287,7 @@ void hud_deployment_update(HUDDeploymentState* ds,
     // Periodic debug logging (every 10 seconds in transition)
     if (ds->phase == HUD_DEPLOY_TRANSITION &&
         (frame_counter % 600) == 0) {
-        MSFS_Log("[C_HUD] Deploy: phase=TRANSITION  fraction=%.2f  timer=%.1fs",
+        MSFS_Log("[C_HUD] Deploy: phase=TRANSITION  fraction=%.3f  timer=%.1fs",
                  ds->deployment_fraction, ds->transition_timer_s);
     }
 }
@@ -269,11 +307,13 @@ void hud_deployment_debug_log(const HUDDeploymentState* ds) {
         default:                    phase_str = "UNKNOWN";    break;
     }
 
-    MSFS_Log("[C_HUD] Deploy: phase=%s  fraction=%.2f  power=%d  "
-             "timer=%.1fs  frames=%d",
+    MSFS_Log("[C_HUD] Deploy: phase=%s  fraction=%.3f  power=%d  "
+             "timer=%.1fs  frames=%d  tok_lvar=%p  tok_pct=%p",
              phase_str,
              ds->deployment_fraction,
              (int)ds->power_on,
              ds->transition_timer_s,
-             ds->frames_since_change);
+             ds->frames_since_change,
+             (void*)(size_t)ds->tok_deploy_lvar,
+             (void*)(size_t)ds->tok_deploy_pct);
 }

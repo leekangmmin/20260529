@@ -703,6 +703,17 @@ typedef enum LVarID {
     LVAR_COLL_SCREEN_DY,        // L:C_HUD_Coll_ScreenDY — collimation delta Y (px)
     LVAR_HUD_RENDER_IN_COMBINER,// L:C_HUD_RenderInCombiner — 1 when clipped to combiner
     LVAR_HUD_COLLIMATED,        // L:C_HUD_Collimated — 1 when collimation active
+
+    // ================================================================
+    //  v3.1.0 — Speed and altitude tape L:vars
+    // ================================================================
+    LVAR_TAPE_IAS_KT,           // L:C_HUD_Tape_IAS_kt — indicated airspeed (knots)
+    LVAR_TAPE_ALT_FT,           // L:C_HUD_Tape_Alt_ft — altitude (feet)
+    LVAR_TAPE_VS_FPM,           // L:C_HUD_Tape_VS_fpm — vertical speed (fpm)
+    LVAR_TAPE_IAS_TREND,        // L:C_HUD_Tape_IAS_Trend — IAS trend (knots/frame, EMA)
+    LVAR_TAPE_ALT_TREND,        // L:C_HUD_Tape_Alt_Trend — altitude trend (ft/frame, EMA)
+    LVAR_TAPE_SPEED_ACTIVE,     // L:C_HUD_Tape_Speed_Active — 1 when speed tape active
+    LVAR_TAPE_ALT_ACTIVE,       // L:C_HUD_Tape_Alt_Active — 1 when altitude tape active
     LVAR_COUNT  // Must be last — total number of L:vars
 } LVarID;
 
@@ -754,6 +765,14 @@ typedef struct ModuleState {
     GAUGE_VAR   tok_accel;
     GAUGE_VAR   tok_indicated_airspeed;
     GAUGE_VAR   tok_on_ground;
+
+    // --- v3.1.0: Live eyepoint position (meters, body frame from design eye) ---
+    GAUGE_VAR   tok_eyepoint_x;   // EYEPOINT POSITION X  (right,  meters)
+    GAUGE_VAR   tok_eyepoint_y;   // EYEPOINT POSITION Y  (up,     meters)
+    GAUGE_VAR   tok_eyepoint_z;   // EYEPOINT POSITION Z  (forward,meters)
+    FLOAT64     ac_eyepoint_x_m;  // Current live X value
+    FLOAT64     ac_eyepoint_y_m;  // Current live Y value
+    FLOAT64     ac_eyepoint_z_m;  // Current live Z value
 
     // --- v2.2.0: NAV1 frequency for ILS runway detection ---
     GAUGE_VAR   tok_nav1_freq;

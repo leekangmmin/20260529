@@ -236,7 +236,5 @@ public:
 ///                     fallback if the aircraft is unsupported.
 IHudAircraftBehavior* hud_behavior_create(const char* aircraft_id);
 
-/// Detect the aircraft category without instantiating a full behavior.
-HudAircraftCategory hud_detect_category(const char* aircraft_id);
 
 #endif // C_HUD_IHUD_AIRCRAFT_BEHAVIOR_H

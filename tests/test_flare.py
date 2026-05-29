@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Conformal HUD – Flare Guidance System Test Suite (v2.1.0)
+Conformal HUD – Flare Guidance System Test Suite (v2.3.1)
 
 Tests:
   1. Flare state initialisation
@@ -10,6 +10,7 @@ Tests:
   5. Touchdown prediction
   6. Cue projection
   7. Debug logging
+  8. Per-aircraft flare_constant override
 
 Run:  python -m pytest tests/test_flare.py -v
 """
@@ -40,6 +41,8 @@ class FlareState:
         self.vertical_speed_ms = -2.0
         self.groundspeed_ms = 70.0
         self.gs_deviation_deg = 0.0
+        # Per-aircraft flare constant override (0.0 = use default)
+        self.flare_constant_override = 0.0
         self.flare_cue_vs = 0.0
         self.flare_cue_error = 0.0
         self.flare_cue_rise = 0.0
@@ -52,6 +55,7 @@ class FlareState:
         self.touchdown_vs = 0.0
         self.touchdown_distance_m = 0.0
         self.time_to_touchdown_s = 0.0
+        self.debug_flare_constant = 0.0
         self.valid = False
 
 
@@ -102,7 +106,8 @@ def flare_compute(flare, dt_s=1.0/60.0):
     flare.flare_frame_count += 1
 
     h_above_td = max(ra - FLARE_TD_HEIGHT_M, 0.1)
-    k = math.sqrt(2.0 * G * FLARE_CONSTANT)
+    fc = flare.flare_constant_override if flare.flare_constant_override > 0.0 else FLARE_CONSTANT
+    k = math.sqrt(2.0 * G * fc)
     raw_command = -k * math.sqrt(h_above_td)
     commanded_vs = max(-10.0, min(0.0, raw_command))
 
@@ -134,6 +139,7 @@ def flare_compute(flare, dt_s=1.0/60.0):
         flare.touchdown_distance_m = 0.0
         flare.touchdown_vs = vs
 
+    flare.debug_flare_constant = fc
     flare.valid = True
     return True
 
@@ -148,6 +154,10 @@ class TestFlareInit:
         assert f.flare_active is False
         assert f.flare_fully_active is False
         assert f.flare_cue_rise == 0.0
+
+    def test_default_override_is_zero(self):
+        f = FlareState()
+        assert f.flare_constant_override == 0.0
 
     def test_activation_threshold(self):
         assert flare_should_activate(100.0) is False
@@ -256,6 +266,40 @@ class TestFlareCommand:
         for _ in range(30):
             flare_compute(f, 1.0/60.0)
         assert f.flare_anticipation > 0.3
+
+    def test_default_uses_fallback_constant(self):
+        f = FlareState()
+        f.radio_altitude_m = 10.0
+        f.vertical_speed_ms = -3.0
+        f.flare_constant_override = 0.0
+        flare_compute(f)
+        assert f.debug_flare_constant == pytest.approx(0.10)
+
+    def test_override_changes_command(self):
+        f_default = FlareState()
+        f_default.radio_altitude_m = 10.0
+        f_default.vertical_speed_ms = -3.0
+        f_default.flare_constant_override = 0.0
+        flare_compute(f_default)
+        cmd_default = f_default.flare_cue_vs
+
+        f_aggressive = FlareState()
+        f_aggressive.radio_altitude_m = 10.0
+        f_aggressive.vertical_speed_ms = -3.0
+        f_aggressive.flare_constant_override = 0.15
+        flare_compute(f_aggressive)
+        cmd_aggressive = f_aggressive.flare_cue_vs
+
+        # More aggressive (higher constant) -> steeper commanded sink
+        assert abs(cmd_aggressive) > abs(cmd_default)
+
+    def test_override_stored_in_debug(self):
+        f = FlareState()
+        f.radio_altitude_m = 10.0
+        f.vertical_speed_ms = -3.0
+        f.flare_constant_override = 0.12
+        flare_compute(f)
+        assert f.debug_flare_constant == pytest.approx(0.12)
 
 
 class TestTouchdownPrediction:

@@ -172,11 +172,15 @@ void AirbusHUDBehavior::compute_flare(
     const FLOAT64 focal_px = (profile->focal_length_px > 0)
                               ? profile->focal_length_px : 520.0;
 
-    // Airbus uses softer flare cues
-    const FLOAT64 flare_constant = 0.08;
-    const FLOAT64 max_rise_px    = 60.0;
-    const FLOAT64 min_cue_size   = 8.0;
-    const FLOAT64 max_cue_size   = 40.0;
+    // Airbus uses softer flare cues — read from profile when available
+    const FLOAT64 flare_constant = (profile->flare_constant > 0.0)
+        ? profile->flare_constant : 0.08;
+    const FLOAT64 max_rise_px = (profile->flare_max_rise_px > 0.0)
+        ? profile->flare_max_rise_px : 60.0;
+    const FLOAT64 min_cue_size = (profile->flare_cue_min_size > 0.0)
+        ? profile->flare_cue_min_size : 8.0;
+    const FLOAT64 max_cue_size = (profile->flare_cue_max_size > 0.0)
+        ? profile->flare_cue_max_size : 40.0;
 
     flare_project_cue(flare, focal_px, ctx.screen_w, ctx.screen_h,
                        td_ref, flare_cue,

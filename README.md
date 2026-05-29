@@ -1,6 +1,6 @@
 # C_HUD_Runway — Conformal HUD Runway Guidance System
 
-**v2.7.0 — ROLLOUT/CAT-III/EVS ENHANCEMENT**
+**v3.4.0 — ROLLOUT/CAT-III/EVS ENHANCEMENT**
 
 A WASM gauge module that implements a true conformal Boeing HGS-style HUD for
 MSFS aircraft with native HUDs.
@@ -91,7 +91,7 @@ MSFS aircraft with native HUDs.
 
 ```
 ├── include/
-│   ├── module.h                # v2.7.0: Core types, timing histograms, perf state,
+│   ├── module.h                # v3.4.0: Core types, timing histograms, perf state,
 │   │                           #          pacing validation, compatibility sigs,
 │   │                           #          optical stability, certification L:vars
 │   ├── projection.h            # Projection math utilities
@@ -131,7 +131,7 @@ MSFS aircraft with native HUDs.
 │       ├── stabilization.h               # Symbol stabilisation filters
 │       └── visual_response.h             # Visual response effects
 ├── src/
-│   ├── main.cpp                # v2.7.0: WASM lifecycle + update pipeline
+│   ├── main.cpp                # v3.4.0: WASM lifecycle + update pipeline
 │   ├── module.cpp              # Gauge callbacks
 │   ├── lvar_table.cpp          # L:Var token table
 │   └── hud/

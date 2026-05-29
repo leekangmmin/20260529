@@ -6,6 +6,10 @@
 //  accepts aircraft-specific parameters (flare_constant, max_rise_px,
 //  min/max cue sizes) from the active HUD profile.
 //
+//  v2.3.1 — profile-aware flare physics.  flare_compute() now reads
+//  FlareState::flare_constant_override and uses the per-aircraft value
+//  when it is set (> 0.0), falling back to the internal #define otherwise.
+//
 //  Implements the Boeing HGS-style flare director.
 //  The flare cue rises from the touchdown aim point as the aircraft
 //  descends through 80 ft RA, becoming fully active below 50 ft.
@@ -83,7 +87,10 @@ bool flare_compute(FlareState* flare, FLOAT64 dt_s) {
     ++flare->flare_frame_count;
 
     const FLOAT64 h_above_td = proj_fmax(ra - FLARE_TD_HEIGHT_M, 0.1);
-    const FLOAT64 k = proj_sqrt(2.0 * FLARE_G * FLARE_CONSTANT);
+    const FLOAT64 fc = (flare->flare_constant_override > 0.0)
+        ? flare->flare_constant_override
+        : FLARE_CONSTANT;
+    const FLOAT64 k = proj_sqrt(2.0 * FLARE_G * fc);
     const FLOAT64 raw_command = -k * proj_sqrt(h_above_td);
 
     flare->debug_raw_command = raw_command;
@@ -124,7 +131,7 @@ bool flare_compute(FlareState* flare, FLOAT64 dt_s) {
         flare->touchdown_vs = vs;
     }
 
-    flare->debug_flare_constant = FLARE_CONSTANT;
+    flare->debug_flare_constant = fc;
     flare->debug_filtered_error = error;
 
     flare->valid = true;
@@ -146,7 +153,8 @@ void flare_project_cue(const FlareState* flare,
                         FLOAT64           min_cue_size,
                         FLOAT64           max_cue_size) {
     (void)focal_px;
-    (void)flare_constant;
+    /* flare_constant parameter reserved for future cue-size scaling;
+       actual flare law uses FlareState.flare_constant_override */
 
     if (cue == 0) {
         return;

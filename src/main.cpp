@@ -44,6 +44,7 @@
 #include "hud/aircraft_detector.h"
 #include "hud/telemetry.h"
 #include "hud/confidence.h"
+#include "hud/declutter.h"
 #include "hud/rollout.h"
 #include "hud/hud_deployment.h"
 #include "hud/combiner_geometry.h"
@@ -152,6 +153,10 @@ typedef struct HUDState {
     bool                combiner_init;       // Combiner geometry initialised
 
 
+    // --- v3.2.0: Persistent confidence and declutter state ---
+    ConfidenceState     confidence;          // ILS/sensor confidence (computed each frame)
+    DeclutterState      declutter;           // Symbol priority / declutter (computed each frame)
+
     // --- Watchdog state ---
     int                 wd_ticks[9];        // previous heartbeat values (v2.7.0: +rollout)
     int                 wd_stalled[9];      // consecutive stall counts
@@ -209,6 +214,10 @@ MSFS_CALLBACK void module_init(void) {
     combiner_geometry_init(&g_hud.combiner_geom);
     g_hud.deploy_init = true;
     g_hud.combiner_init = true;
+
+    // v3.2.0 — Initialise confidence and declutter state
+    confidence_init(&g_hud.confidence);
+    declutter_init(&g_hud.declutter);
 
     // v2.5.0 — Behaviour will be created after POST_INSTALL resolves TITLE
     g_behavior = 0;
@@ -321,6 +330,14 @@ bool module_update_read_vars(FsContext ctx) {
         const FLOAT64 on_gnd = module_read_f64(g_state.tok_on_ground);
         g_state.ac_on_ground = (on_gnd >= 0.5);
     }
+
+    // v3.1.0 — Live eyepoint position
+    if (g_state.tok_eyepoint_x != 0)
+        g_state.ac_eyepoint_x_m = gauge_get_var_value(g_state.tok_eyepoint_x);
+    if (g_state.tok_eyepoint_y != 0)
+        g_state.ac_eyepoint_y_m = gauge_get_var_value(g_state.tok_eyepoint_y);
+    if (g_state.tok_eyepoint_z != 0)
+        g_state.ac_eyepoint_z_m = gauge_get_var_value(g_state.tok_eyepoint_z);
 
     // v2.2.0: NAV1 frequency for ILS runway detection
     if (g_state.tok_nav1_freq != 0) {
@@ -477,10 +494,29 @@ bool module_update_project(const sGaugeDrawData* dd) {
                               ? profile->focal_length_px
                               : 520.0;
 
-    // Eye offset from profile
+    // Eye offset from profile (base position)
     Vec3 eye_offset = proj_vec3_make(profile->eye_position.forward_m,
                                       profile->eye_position.right_m,
                                       profile->eye_position.down_m);
+
+    // v3.0.1 — Apply live camera offsets from calibration (TrackIR/head tracking).
+    // The calibration L:vars are read every frame by calib_read_lvars() and represent
+    // dynamic pilot head position adjustments.
+    eye_offset.x += g_hud.calib.eye_offset_forward_m;
+    eye_offset.y += g_hud.calib.eye_offset_right_m;
+    eye_offset.z += g_hud.calib.eye_offset_down_m;
+
+    // v3.1.0 — Apply live eyepoint delta on top of static offsets.
+    // EYEPOINT POSITION X/Y/Z is forward/right/up body-frame offset from
+    // the MSFS design eye point for this aircraft.
+    // Map: MSFS X(right)→body Y, MSFS Y(up)→body -Z(down), MSFS Z(forward)→body X
+    if (g_state.tok_eyepoint_x != 0 &&
+        g_state.tok_eyepoint_y != 0 &&
+        g_state.tok_eyepoint_z != 0) {
+        eye_offset.x += g_state.ac_eyepoint_z_m;          // MSFS Z (forward) → body X
+        eye_offset.y += g_state.ac_eyepoint_x_m;          // MSFS X (right)   → body Y
+        eye_offset.z -= g_state.ac_eyepoint_y_m;          // MSFS Y (up)      → body -Z (down)
+    }
 
     // Build body-to-world rotation matrix
     Mat4 b2w;
@@ -809,6 +845,42 @@ bool module_update_project(const sGaugeDrawData* dd) {
     }
 
     // ================================================================
+    //  v3.2.0 — CONFIDENCE (persistent, published to L:Vars each frame)
+    // ================================================================
+    {
+        confidence_compute(&g_hud.confidence, dt_s,
+                           g_state.ils_filter.loc.value,
+                           g_state.ils_filter.gs.value,
+                           g_hud.guidance.loc_captured,
+                           g_hud.guidance.gs_captured,
+                           g_state.ac_radio_alt_m > 0.0,
+                           g_state.ac_groundspeed_ms,
+                           g_hud.evs.cat_category >= 3);
+    }
+
+    // ================================================================
+    //  v3.2.0 — DECLUTTER (persistent, published to L:Vars each frame)
+    // ================================================================
+    {
+        // Determine flight phase from aircraft state
+        FlightPhase dcl_phase = PHASE_CRUISE;
+        if (g_state.ac_on_ground && g_state.ac_groundspeed_ms > 2.0) {
+            dcl_phase = PHASE_TAXI;
+        } else if (g_hud.rollout.phase == ROLLOUT_PHASE_ACTIVE ||
+                   g_hud.rollout.phase == ROLLOUT_PHASE_TRANSITION) {
+            dcl_phase = PHASE_ROLLOUT;
+        } else if (g_hud.flare.flare_active) {
+            dcl_phase = PHASE_FLARE;
+        } else if (g_state.ac_radio_alt_m > 0.0 && g_state.ac_radio_alt_m < 2500.0 &&
+                   (g_hud.guidance.loc_captured || g_hud.guidance.gs_captured)) {
+            dcl_phase = PHASE_APPROACH;
+        }
+        const bool low_vis = (g_state.weather.visibility_m < 3000.0);
+        declutter_compute(&g_hud.declutter, dcl_phase, low_vis,
+                          g_state.weather.visibility_m);
+    }
+
+    // ================================================================
     //  v2.7.0 — Rollout guidance (persistent state for publish)
     // ================================================================
     {
@@ -931,18 +1003,6 @@ bool module_update_project(const sGaugeDrawData* dd) {
     {
         const FLOAT64 timestamp = (FLOAT64)g_state.frame_counter / 60.0;
 
-        // Capture confidence/rollout state for telemetry
-        ConfidenceState temp_conf;
-        confidence_init(&temp_conf);
-        // Compute confidence from actual sensor state
-        confidence_compute(&temp_conf, dt_s,
-                           g_state.ils_filter.loc.value,
-                           g_state.ils_filter.gs.value,
-                           g_hud.guidance.loc_captured,
-                           g_hud.guidance.gs_captured,
-                           g_state.ac_radio_alt_m > 0.0,
-                           g_state.ac_groundspeed_ms,
-                           g_hud.active_runway.valid);
 
         RolloutState temp_rollout;
         rollout_init(&temp_rollout);
@@ -967,7 +1027,7 @@ bool module_update_project(const sGaugeDrawData* dd) {
             &temp_rollout,
             &g_hud.proj_runway,
             &g_hud.active_runway,
-            &temp_conf,
+            &g_hud.confidence,
             &g_hud.stab,
             &g_hud.optics,
             g_hud.jitter_ms);
@@ -985,7 +1045,7 @@ bool module_update_project(const sGaugeDrawData* dd) {
 //  UPDATE PHASE 3  —  publish L: vars for JS overlay
 // ============================================================================
 void module_update_publish(const sGaugeDrawData* dd) {
-    (void)dd;
+    
 
     const bool hud_active = g_state.hud_allowed && g_state.hud_power_on;
     const FLOAT64 hud_active_f = hud_active ? 1.0 : 0.0;
@@ -1004,8 +1064,10 @@ void module_update_publish(const sGaugeDrawData* dd) {
     lvar_write(LVAR_HUD_ACTIVE,   hud_active_f);
 
     //  3.  SCREEN CENTRE / COMBINER (always published)
-    lvar_write(LVAR_SCREEN_CX,    512.0);
-    lvar_write(LVAR_SCREEN_CY,    512.0);
+        const int pub_win_w = (dd != 0 && dd->winWidth > 0 && dd->winWidth <= 4096) ? dd->winWidth : C_HUD_PANEL_WIDTH;
+    const int pub_win_h = (dd != 0 && dd->winHeight > 0 && dd->winHeight <= 4096) ? dd->winHeight : C_HUD_PANEL_HEIGHT;
+    lvar_write(LVAR_SCREEN_CX,    (FLOAT64)(pub_win_w / 2));
+        lvar_write(LVAR_SCREEN_CY,    (FLOAT64)(pub_win_h / 2));
 
     // Combiner rect (from profile or defaults)
     const HUDProfile* prof = hud_profile_match(g_state.aircraft_id);
@@ -1034,13 +1096,27 @@ void module_update_publish(const sGaugeDrawData* dd) {
         lvar_write(LVAR_OPTICAL_CY,    g_hud.combiner_geom.optical_cy);
 
         // Collimation correction in screen pixels (for JS viewpoint compensation)
+        //
+        // v3.0.1 — FIX: Proper perspective projection instead of panel-ratio scaling.
+        // The correction_vector is in body-frame metres.  To convert to screen pixels,
+        // we use:  px = m * focal_length_px / combiner_distance_m
+        // where focal_length_px is the camera's focal length in pixels and
+        // combiner_distance_m is the approximate eye-to-combiner distance (0.6 m typical).
         {
-            const FLOAT64 scale = g_hud.combiner_geom.scale_x > 0.0
-                                   ? g_hud.combiner_geom.scale_x : 1.0;
-            lvar_write(LVAR_COLL_SCREEN_DX,
-                       g_hud.collimation_cc.correction_vector.x * scale);
-            lvar_write(LVAR_COLL_SCREEN_DY,
-                       g_hud.collimation_cc.correction_vector.y * scale);
+            const HUDProfile* proj_prof = hud_profile_match(g_state.aircraft_id);
+            const FLOAT64 proj_focal_px = (proj_prof != 0 && proj_prof->focal_length_px > 0.0)
+                                          ? proj_prof->focal_length_px : 520.0;
+            const FLOAT64 combiner_dist_m = 0.6;  // typical HUD eye relief (metres)
+            const FLOAT64 proj_scale = proj_focal_px / combiner_dist_m;
+            if (!g_hud.collimation_cc.active) {
+                lvar_write(LVAR_COLL_SCREEN_DX, 0.0);
+                lvar_write(LVAR_COLL_SCREEN_DY, 0.0);
+            } else {
+                lvar_write(LVAR_COLL_SCREEN_DX,
+                           g_hud.collimation_cc.correction_vector.x * proj_scale);
+                lvar_write(LVAR_COLL_SCREEN_DY,
+                           g_hud.collimation_cc.correction_vector.y * proj_scale);
+            }
         }
 
         // Render constraints
@@ -1148,6 +1224,33 @@ void module_update_publish(const sGaugeDrawData* dd) {
         lvar_write(LVAR_STEER_PITCH,   g_hud.guidance.steering_pitch);
         lvar_write(LVAR_STEER_BANK,    g_hud.guidance.steering_bank);
         ++g_hud.hb_guidance;
+    }
+
+    // ================================================================
+    //  10b.  v3.2.0 — CONFIDENCE + DECLUTTER L:Vars
+    // ================================================================
+    {
+        // Confidence render parameters (used by JS draw_guidance())
+        lvar_write(LVAR_CONF_INTEGRITY,
+                   g_hud.confidence.overall_integrity);
+        lvar_write(LVAR_CONF_CATIII,
+                   g_hud.confidence.cat_iii_qualification);
+        lvar_write(LVAR_CONF_LOC_MODE,
+                   (FLOAT64)g_hud.confidence.render.loc_mode);
+        lvar_write(LVAR_CONF_GS_MODE,
+                   (FLOAT64)g_hud.confidence.render.gs_mode);
+        lvar_write(LVAR_CONF_LOC_ALPHA,
+                   g_hud.confidence.render.loc_alpha);
+        lvar_write(LVAR_CONF_GS_ALPHA,
+                   g_hud.confidence.render.gs_alpha);
+
+        // Declutter state (published for JS and diagnostic tools)
+        lvar_write(LVAR_DCL_PHASE,
+                   (FLOAT64)g_hud.declutter.current_phase);
+        lvar_write(LVAR_DCL_ACTIVE,
+                   g_hud.declutter.active ? 1.0 : 0.0);
+        lvar_write(LVAR_DCL_VISIBLE_COUNT,
+                   (FLOAT64)g_hud.declutter.visible_symbol_count);
     }
 
     // ================================================================
@@ -1272,7 +1375,70 @@ void module_update_publish(const sGaugeDrawData* dd) {
                    g_hud.optics.temporal_blend_factor);
     }
 
+
+    // v3.4.0 — Visual response state (GROUP A)
+    lvar_write(LVAR_VIS_ACTIVE,      g_hud.optics.temporal_blend_factor > 0.0 ? 1.0 : 0.0);
+    lvar_write(LVAR_VIS_BLOOM,       g_hud.optics.bloom_amount);
+    lvar_write(LVAR_VIS_BRIGHTNESS,  g_hud.optics.current_brightness);
+    lvar_write(LVAR_VIS_CONTRAST,    1.0);   // fixed, no dynamic contrast state yet
+    lvar_write(LVAR_VIS_PHOSPHOR_MS, (FLOAT64)prof->phosphor_persistence_ms);
+    lvar_write(LVAR_VIS_FATIGUE,     g_hud.optics.temporal_blend_factor);
+
+    // v3.4.0 — Depth illusion (GROUP B)
+    lvar_write(LVAR_DEPTH_ACTIVE,    g_hud.evs.active ? 1.0 : 0.0);
+    lvar_write(LVAR_DEPTH_INTENSITY, g_hud.evs.debug_evs_intensity * 0.5);
+
+    // NOTE: LVAR_VIS_DARK_ADAPT and LVAR_VIS_RAIN_GLARE intentionally skipped —
+    // no source data available yet (pending v3.5.0).
+
     // ================================================================
+    //  v3.1.0  —  Speed and Altitude Tapes (profile-gated)
+    // ================================================================
+    {
+        const bool speed_active = prof->has_speed_tape;
+        const bool alt_active   = prof->has_altitude_tape;
+        lvar_write(LVAR_TAPE_SPEED_ACTIVE, speed_active ? 1.0 : 0.0);
+        lvar_write(LVAR_TAPE_ALT_ACTIVE,   alt_active   ? 1.0 : 0.0);
+
+        if (speed_active) {
+            const FLOAT64 ias_kt = g_state.ac_indicated_airspeed_ms * 1.94384;
+            lvar_write(LVAR_TAPE_IAS_KT, ias_kt);
+            // EMA trend (knots per frame, smoothed)
+            static FLOAT64 s_prev_ias_kt = 0.0;
+            static FLOAT64 s_ias_trend   = 0.0;
+            const FLOAT64 raw_trend = ias_kt - s_prev_ias_kt;
+            s_ias_trend = s_ias_trend * 0.95 + raw_trend * 0.05;
+            s_prev_ias_kt = ias_kt;
+            lvar_write(LVAR_TAPE_IAS_TREND, s_ias_trend);
+        }
+
+        if (alt_active) {
+            const FLOAT64 alt_ft = g_state.ac_alt_m * 3.28084;
+            lvar_write(LVAR_TAPE_ALT_FT, alt_ft);
+            const FLOAT64 vs_fpm = g_state.ac_vertical_speed_ms * 196.85;
+            lvar_write(LVAR_TAPE_VS_FPM, vs_fpm);
+            // EMA trend (feet per frame, smoothed)
+            static FLOAT64 s_prev_alt_ft = 0.0;
+            static FLOAT64 s_alt_trend   = 0.0;
+            const FLOAT64 raw_trend = alt_ft - s_prev_alt_ft;
+            s_alt_trend = s_alt_trend * 0.95 + raw_trend * 0.05;
+            s_prev_alt_ft = alt_ft;
+            lvar_write(LVAR_TAPE_ALT_TREND, s_alt_trend);
+        }
+    }
+
+    // v3.4.0 — Frame pacing (GROUP C)
+    lvar_write(LVAR_PACING_CONTINUITY,    g_state.pacing.continuity_metric);
+    lvar_write(LVAR_PACING_ANOMALY_COUNT, (FLOAT64)g_state.pacing.anomaly_count);
+    lvar_write(LVAR_PACING_IN_RECOVERY,   g_state.pacing.in_recovery ? 1.0 : 0.0);
+    lvar_write(LVAR_PACING_STABLE_FRAMES, (FLOAT64)g_state.pacing.consecutive_stable_frames);
+
+    // v3.4.0 — Optical stability (GROUP D)
+    lvar_write(LVAR_OPTIC_STABILITY_SCORE, g_state.optic_stability.optical_stability_score);
+    lvar_write(LVAR_OPTIC_SHIMMER_LEVEL,   g_state.optic_stability.shimmer_accumulator);
+    lvar_write(LVAR_OPTIC_FATIGUE,         g_state.optic_stability.current_fatigue);
+    lvar_write(LVAR_OPTIC_PHOSPHOR_SMEAR,  g_state.optic_stability.phosphor_smear_amount);
+
     //  13.  SUBSYSTEM HEARTBEATS
     // ================================================================
     lvar_write(LVAR_HB_FPV,          (FLOAT64)g_hud.hb_fpv);

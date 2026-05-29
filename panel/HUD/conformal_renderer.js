@@ -1,5 +1,5 @@
 // ============================================================================
-//  Conformal HUD – Boeing HGS-style Symbology Renderer  |  v3.0.0
+//  Conformal HUD – Boeing HGS-style Symbology Renderer  |  v3.4.0
 //  MSFS 2024  ·  Canvas 2-D  ·  Green monochrome
 //
 //  PHASE 4 — REAL HUD INTEGRATION: Combiner clipping, deployment detection, collimated rendering
@@ -16,6 +16,7 @@
 //    · Rollout guidance (centerline, deviation, command)   — v2.7.0
 //    · CAT III annunciations (CAT II/III, LAND3/2, FLARE, ROLLOUT, NO DH) — v2.7.0
 //    · EVS active box, contrast cue, visibility indication — v2.7.0
+//    · ILS/sensor failure flags ("LOC", "G/S") — confidence-modulated bars — v3.2.0
 //    · EVS-enhanced rendering (fog penetration, contrast boost)
 //    · Collimation debug overlays
 //    · Advanced symbology (accel caret, energy trend, etc.)
@@ -33,7 +34,18 @@
 //    · Added anti-jitter filtering for rollout symbols
 //    · Added low-speed fade for rollout guidance elements
 //    · Added aircraft-type-aware annunciation styling
+//  v3.1.0 CHANGES:
+//    · Added speed tape (left side) and altitude tape (right side) for aircraft
+//      without native HUD (PMDG 777).  Driven by WASM-published L:Vars.
+//    · draw_speed_tape() and draw_altitude_tape() — Boeing HGS-style vertical strips
+//      with tick marks, current-value pointers, trend indicators, and VS bar.
+//  v3.2.0 CHANGES:
+//    · draw_guidance() now reads confidence L:Vars (L:C_HUD_Conf_LocMode, GSMode, LocAlpha, GSAlpha)
+//    · Added draw_ils_failure_flags() — Boeing HGS-style "LOC"/"G/S" failure flags
+//    · ILS/sensor failure flags in upper-right combiner area
 // ============================================================================
+//    · HUD phosphor drain on power-off, warm-up scan on deploy              — v3.3.0
+//    · Phosphor persistence accumulation fix (correct decay algorithm)      — v3.4.0
 
 (function () {
     "use strict";
@@ -93,6 +105,18 @@
     var EVS_CONTRAST_BAR_W        = 80;
     var EVS_CONTRAST_BAR_H        = 6;
 
+    // v3.1.0 — Speed / altitude tape constants
+    var TAPE_W                    = 55;
+    var TAPE_H                    = 200;
+    var TAPE_MARGIN_X             = 20;    // horizontal offset from combiner edge
+    var TAPE_TICK_INTERVAL_KT     = 10;    // 10-knot tick spacing
+    var TAPE_TICK_INTERVAL_FT     = 100;   // 100-ft tick spacing
+    var TAPE_LABEL_INTERVAL_KT    = 20;    // label every 20 knots
+    var TAPE_LABEL_INTERVAL_FT    = 500;   // label every 500 ft
+    var TAPE_VS_MAX_FPM           = 2000;  // ±2000 fpm for VS bar
+    var TAPE_VS_BAR_MAX_PX        = 100;   // maps to ±100 px
+    var TAPE_BOX_H                = 22;    // current-value box height
+
     // Phosphor persistence buffer
     var phosphorCanvas  = null;
     var phosphorCtx     = null;
@@ -108,6 +132,11 @@
         rollout_dev: NaN,
         rollout_cmd: NaN
     };
+
+    // v3.3.0 — HUD power lifecycle state
+    var prevDeployPhase  = -1;   // previous deploy_phase value (-1 = uninitialised)
+    var powerOffFrames   = 0;    // frames since power was cut (for drain fade)
+    var POWER_OFF_DRAIN_FRAMES = 18;  // ~300ms @ 60fps for phosphor drain
 
     // ====================================================================
     //  3.  Utility functions
@@ -128,6 +157,11 @@
             } else {
                 phosphorCanvas.width = w;
                 phosphorCanvas.height = h;
+                // Reset phosphor state on resize to prevent size-mismatch artifacts
+                if (phosphorCtx) {
+                    phosphorCtx.clearRect(0, 0, w, h);
+                    phosphorCtx.globalAlpha = 1.0;
+                }
             }
         }
     }
@@ -467,48 +501,125 @@
     }
 
     // ====================================================================
+    //  9b.  v3.2.0 — ILS Failure Flag display (Boeing HGS style)
+    //       "LOC" flag when localiser signal lost
+    //       "G/S" flag when glideslope signal lost
+    //       Flags appear in the upper-right quadrant of the combiner,
+    //       matching Collins HGS-4000 flag placement convention.
+    // ====================================================================
+    function draw_ils_failure_flags(alpha, loc_mode, gs_mode) {
+        // Only render flags when sensor has actually failed (HIDDEN = mode 4 in C++ enum)
+        var show_loc_flag = (loc_mode === 4);
+        var show_gs_flag  = (gs_mode  === 4);
+        if (!show_loc_flag && !show_gs_flag) return;
+        var comb = get_combiner();
+        // Position: upper-right area of combiner
+        var base_x = comb ? (comb.x + comb.w - 85) : (canvas.width  - 85);
+        var base_y = comb ? (comb.y + 30)           : 30;
+        var flag_w    = 52;
+        var flag_h    = 18;
+        var flag_pad  = 4;
+        var flag_font = 12;
+        var flag_a    = alpha * 0.95;
+        // LOC flag
+        if (show_loc_flag) {
+            var fx = base_x;
+            var fy = base_y;
+            set_hud_style(flag_a, 1.5);
+            ctx.strokeRect(fx, fy, flag_w, flag_h);
+            ctx.fillStyle = "rgba(0,255,0,0.12)";
+            ctx.fillRect(fx, fy, flag_w, flag_h);
+            draw_text("LOC", fx + flag_pad, fy + flag_pad, flag_a, flag_font);
+        }
+        // G/S flag
+        if (show_gs_flag) {
+            var fx = base_x;
+            var fy = base_y + (show_loc_flag ? (flag_h + 4) : 0);
+            set_hud_style(flag_a, 1.5);
+            ctx.strokeRect(fx, fy, flag_w, flag_h);
+            ctx.fillStyle = "rgba(0,255,0,0.12)";
+            ctx.fillRect(fx, fy, flag_w, flag_h);
+            draw_text("G/S", fx + flag_pad, fy + flag_pad, flag_a, flag_font);
+        }
+    }
+
+    // ====================================================================
     //  9.  Guidance bars & crosshair
     // ====================================================================
+    // v3.2.0 — Now reads sensor confidence L:Vars from WASM C++ pipeline.
+    //          LOC/GS bars use confidence alpha, dash pattern, or hidden state.
+    //          Crosshair visibility is confidence-modulated (min 0.2 alpha).
+    //          Failure flags shown when mode == HIDDEN (4).
 
     function draw_guidance(alpha) {
-        // Draw ILS crosshair
-        var gs = read_lvar("L:C_HUD_ILS_GS");
+        // --- Read sensor confidence from WASM pipeline ---
+        var loc_mode  = read_lvar("L:C_HUD_Conf_LocMode");
+        var loc_conf_a = read_lvar("L:C_HUD_Conf_LocAlpha");
+        var gs_mode   = read_lvar("L:C_HUD_Conf_GSMode");
+        var gs_conf_a = read_lvar("L:C_HUD_Conf_GSAlpha");
+        // Fall back to full opacity if confidence L:Vars not published
+        if (isNaN(loc_mode))  loc_mode  = 0;
+        if (isNaN(loc_conf_a)) loc_conf_a = 0.9;
+        if (isNaN(gs_mode))   gs_mode   = 0;
+        if (isNaN(gs_conf_a)) gs_conf_a = 0.9;
+        // --- ILS crosshair (always uses raw deviation, scaled by confidence) ---
+        var gs  = read_lvar("L:C_HUD_ILS_GS");
         var loc = read_lvar("L:C_HUD_ILS_LOC");
         if (!isNaN(gs) && !isNaN(loc)) {
             var SCALE = 20.0;
-            var gs_scaled = clamp(gs, -2.0, 2.0) * SCALE;
+            var gs_scaled  = clamp(gs,  -2.0, 2.0) * SCALE;
             var loc_scaled = clamp(loc, -2.0, 2.0) * SCALE;
-            var cx = canvas.width / 2 + loc_scaled;
+            var cx = canvas.width  / 2 + loc_scaled;
             var cy = canvas.height / 2 + gs_scaled;
-
-            draw_crosshair(cx, cy, CROSSHAIR_R, alpha * 0.9, CROSSHAIR_W);
+            // Crosshair dims with confidence but never fully disappears (provides
+            // deviation reference even in degraded state)
+            var xhair_a = alpha * 0.9 * clamp((loc_conf_a + gs_conf_a) * 0.5, 0.2, 1.0);
+            draw_crosshair(cx, cy, CROSSHAIR_R, xhair_a, CROSSHAIR_W);
         }
-
-        // Draw conformal guidance target bars
+        // --- Conformal guidance bars ---
         var loc_captured = read_lvar("L:C_HUD_LOC_Captured");
-        var gs_captured = read_lvar("L:C_HUD_GS_Captured");
-        var gs_tx = read_lvar("L:C_HUD_GS_Target_X");
-        var gs_ty = read_lvar("L:C_HUD_GS_Target_Y");
+        var gs_captured  = read_lvar("L:C_HUD_GS_Captured");
+        var gs_tx  = read_lvar("L:C_HUD_GS_Target_X");
+        var gs_ty  = read_lvar("L:C_HUD_GS_Target_Y");
         var loc_tx = read_lvar("L:C_HUD_LOC_Target_X");
         var loc_ty = read_lvar("L:C_HUD_LOC_Target_Y");
-
-        if (!isNaN(loc_tx) && !isNaN(loc_ty)) {
-            var use_alpha = alpha * (isNaN(loc_captured) || loc_captured < 0.5 ? 0.6 : 0.9);
-            set_hud_style(use_alpha, BAR_W);
+        // ---- LOC bar ----
+        if (!isNaN(loc_tx) && !isNaN(loc_ty) && loc_mode !== 4) {
+            var cap_boost = (!isNaN(loc_captured) && loc_captured >= 0.5) ? 1.0 : 0.67;
+            var bar_a = alpha * loc_conf_a * cap_boost;
+            set_hud_style(bar_a, BAR_W);
+            if (loc_mode === 2) {
+                // DASHED (mode 2) — signal is degraded
+                if (ctx.setLineDash) ctx.setLineDash([10, 8]);
+            } else {
+                if (ctx.setLineDash) ctx.setLineDash([]);
+            }
             ctx.beginPath();
             ctx.moveTo(loc_tx, loc_ty - BAR_LENGTH);
             ctx.lineTo(loc_tx, loc_ty + BAR_LENGTH);
             ctx.stroke();
+            if (ctx.setLineDash) ctx.setLineDash([]);
         }
-
-        if (!isNaN(gs_tx) && !isNaN(gs_ty)) {
-            var use_alpha = alpha * (isNaN(gs_captured) || gs_captured < 0.5 ? 0.6 : 0.9);
-            set_hud_style(use_alpha, BAR_W);
+        // ---- GS bar ----
+        if (!isNaN(gs_tx) && !isNaN(gs_ty) && gs_mode !== 4) {
+            var cap_boost = (!isNaN(gs_captured) && gs_captured >= 0.5) ? 1.0 : 0.67;
+            var bar_a = alpha * gs_conf_a * cap_boost;
+            set_hud_style(bar_a, BAR_W);
+            if (gs_mode === 2) {
+                // DASHED (mode 2) — signal is degraded
+                if (ctx.setLineDash) ctx.setLineDash([10, 8]);
+            } else {
+                if (ctx.setLineDash) ctx.setLineDash([]);
+            }
             ctx.beginPath();
             ctx.moveTo(gs_tx - BAR_LENGTH, gs_ty);
             ctx.lineTo(gs_tx + BAR_LENGTH, gs_ty);
             ctx.stroke();
+            if (ctx.setLineDash) ctx.setLineDash([]);
         }
+        // ---- Failure flags ----
+        // Boeing HGS shows a bright boxed flag when a sensor is HIDDEN (failed).
+        draw_ils_failure_flags(alpha, loc_mode, gs_mode);
     }
 
     // ====================================================================
@@ -585,7 +696,207 @@
     }
 
     // ====================================================================
-    //  12.  v2.7.0 — Rollout Guidance Rendering
+    //  12.  v3.1.0 — Speed tape (left side of combiner)
+    //       Boeing HGS-style vertical strip showing IAS with ticks/trend
+    // ====================================================================
+
+    function draw_speed_tape(alpha, comb) {
+        var active = read_lvar("L:C_HUD_Tape_Speed_Active");
+        if (isNaN(active) || active < 0.5) return;
+        if (!comb) return;
+
+        var ias = read_lvar("L:C_HUD_Tape_IAS_kt");
+        var trend = read_lvar("L:C_HUD_Tape_IAS_Trend");
+        if (isNaN(ias)) return;
+
+        // Tape geometry: left side of combiner, vertically centred
+        var tape_l = comb.x + TAPE_MARGIN_X;
+        var tape_cy = comb.y + comb.h / 2;
+        var tape_t = tape_cy - TAPE_H / 2;
+        var tape_b = tape_cy + TAPE_H / 2;
+        var tape_r = tape_l + TAPE_W;
+
+        // Scale: 200 px covers ±100 kt → 1 px = 1 kt
+        var px_per_kt = 1.0;
+
+        // --- Border ---
+        set_hud_style(alpha * 0.35, 1.0);
+        ctx.strokeRect(tape_l, tape_t, TAPE_W, TAPE_H);
+
+        // --- Tick marks at 10-kt intervals (10 above + 10 below = ±100 kt) ---
+        for (var offset = -100; offset <= 100; offset += TAPE_TICK_INTERVAL_KT) {
+            if (offset === 0) continue;
+            var y = tape_cy + offset * px_per_kt;
+            if (y < tape_t || y > tape_b) continue;
+
+            var is_label = (Math.abs(offset) % TAPE_LABEL_INTERVAL_KT === 0);
+            var tick_len = is_label ? 14 : 9;
+            var tick_x = tape_r - tick_len;
+
+            draw_line(tick_x, y, tape_r, y, alpha * 0.5, 1.0);
+
+            // Label every 20 kt
+            if (is_label) {
+                var val = Math.round(ias + offset);
+                draw_text(val.toString(), tape_l + 3, y - 6, alpha * 0.6, 10);
+            }
+        }
+
+        // --- Current value box (fixed at centre) ---
+        var box_h = TAPE_BOX_H;
+        var box_y = tape_cy - box_h / 2;
+        var box_w = TAPE_W - 4;
+        var box_x = tape_l + 2;
+
+        ctx.fillStyle = "rgba(0,0,0,0.75)";
+        ctx.fillRect(box_x, box_y, box_w, box_h);
+        set_hud_style(alpha * 0.85, 1.5);
+        ctx.strokeRect(box_x, box_y, box_w, box_h);
+
+        // Chevron ">" pointer on right edge
+        set_hud_style(alpha * 0.9, 2.0);
+        ctx.beginPath();
+        ctx.moveTo(tape_r, tape_cy - 6);
+        ctx.lineTo(tape_r + 6, tape_cy);
+        ctx.lineTo(tape_r, tape_cy + 6);
+        ctx.stroke();
+
+        // Current value text (centred in box)
+        set_hud_style(alpha * 0.9, 1);
+        ctx.font = "13px monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(Math.round(ias).toString(), box_x + box_w / 2, tape_cy);
+
+        // --- Trend indicator (small arrow above or below box) ---
+        if (!isNaN(trend)) {
+            var trend_arrow_sz = 4;
+            var trend_x = tape_r - 8;
+            if (trend > 0.5) {
+                set_hud_style(alpha * 0.7, 1.5);
+                ctx.beginPath();
+                ctx.moveTo(trend_x, box_y - 4);
+                ctx.lineTo(trend_x - trend_arrow_sz, box_y - 10);
+                ctx.lineTo(trend_x + trend_arrow_sz, box_y - 10);
+                ctx.closePath();
+                ctx.stroke();
+            } else if (trend < -0.5) {
+                set_hud_style(alpha * 0.7, 1.5);
+                ctx.beginPath();
+                ctx.moveTo(trend_x, box_y + box_h + 4);
+                ctx.lineTo(trend_x - trend_arrow_sz, box_y + box_h + 10);
+                ctx.lineTo(trend_x + trend_arrow_sz, box_y + box_h + 10);
+                ctx.closePath();
+                ctx.stroke();
+            }
+        }
+    }
+
+    // ====================================================================
+    //  13.  v3.1.0 — Altitude tape (right side of combiner)
+    //       Boeing HGS-style vertical strip showing altitude with V/S bar
+    // ====================================================================
+
+    function draw_altitude_tape(alpha, comb) {
+        var active = read_lvar("L:C_HUD_Tape_Alt_Active");
+        if (isNaN(active) || active < 0.5) return;
+        if (!comb) return;
+
+        var alt_ft = read_lvar("L:C_HUD_Tape_Alt_ft");
+        var vs_fpm = read_lvar("L:C_HUD_Tape_VS_fpm");
+        var trend = read_lvar("L:C_HUD_Tape_Alt_Trend");
+        if (isNaN(alt_ft)) return;
+
+        // Tape geometry: right side of combiner, vertically centred
+        var tape_r = comb.x + comb.w - TAPE_MARGIN_X;
+        var tape_l = tape_r - TAPE_W;
+        var tape_cy = comb.y + comb.h / 2;
+        var tape_t = tape_cy - TAPE_H / 2;
+        var tape_b = tape_cy + TAPE_H / 2;
+
+        // Scale: 200 px covers ±1000 ft → 1 px = 10 ft
+        var px_per_ft = 0.1;
+
+        // --- Border ---
+        set_hud_style(alpha * 0.35, 1.0);
+        ctx.strokeRect(tape_l, tape_t, TAPE_W, TAPE_H);
+
+        // --- Tick marks at 100-ft intervals (±1000 ft) ---
+        for (var offset = -1000; offset <= 1000; offset += TAPE_TICK_INTERVAL_FT) {
+            if (offset === 0) continue;
+            var y = tape_cy + offset * px_per_ft;
+            if (y < tape_t || y > tape_b) continue;
+
+            var is_label = (Math.abs(offset) % TAPE_LABEL_INTERVAL_FT === 0);
+            var tick_len = is_label ? 14 : 9;
+            var tick_x = tape_l;
+
+            draw_line(tick_x, y, tick_x + tick_len, y, alpha * 0.5, 1.0);
+
+            // Label every 500 ft
+            if (is_label) {
+                var val = Math.round(alt_ft + offset);
+                draw_text(val.toString(), tape_l + tick_len + 3, y - 6,
+                          alpha * 0.6, 10);
+            }
+        }
+
+        // --- Current value box (fixed at centre) ---
+        var box_h = TAPE_BOX_H;
+        var box_y = tape_cy - box_h / 2;
+        var box_w = TAPE_W - 4;
+        var box_x = tape_l + 2;
+
+        ctx.fillStyle = "rgba(0,0,0,0.75)";
+        ctx.fillRect(box_x, box_y, box_w, box_h);
+        set_hud_style(alpha * 0.85, 1.5);
+        ctx.strokeRect(box_x, box_y, box_w, box_h);
+
+        // Chevron "<" pointer on left edge
+        set_hud_style(alpha * 0.9, 2.0);
+        ctx.beginPath();
+        ctx.moveTo(tape_l, tape_cy - 6);
+        ctx.lineTo(tape_l - 6, tape_cy);
+        ctx.lineTo(tape_l, tape_cy + 6);
+        ctx.stroke();
+
+        // Current value text (centred in box)
+        set_hud_style(alpha * 0.9, 1);
+        ctx.font = "13px monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(Math.round(alt_ft).toString(), box_x + box_w / 2, tape_cy);
+
+        // --- V/S indicator bar (right side of tape) ---
+        // Scale: ±2000 fpm → ±100 px, clamped
+        if (!isNaN(vs_fpm)) {
+            var vs_offset = clamp(vs_fpm / TAPE_VS_MAX_FPM, -1.0, 1.0) *
+                            TAPE_VS_BAR_MAX_PX;
+            var vs_bar_w = 3;
+            var vs_bar_x = tape_r - vs_bar_w - 3;
+            var vs_bar_top = tape_cy;
+            var vs_bar_bot = tape_cy + vs_offset;
+
+            set_hud_style(alpha * 0.6, 1.0);
+            ctx.beginPath();
+            ctx.moveTo(vs_bar_x, vs_bar_top);
+            ctx.lineTo(vs_bar_x, vs_bar_bot);
+            ctx.stroke();
+
+            // Small cap at the end of the VS bar (arrowhead)
+            if (Math.abs(vs_offset) > 2) {
+                var cap_dir = vs_offset > 0 ? 1 : -1;
+                ctx.beginPath();
+                ctx.moveTo(vs_bar_x - 3, vs_bar_bot - cap_dir * 3);
+                ctx.lineTo(vs_bar_x, vs_bar_bot);
+                ctx.lineTo(vs_bar_x + 3, vs_bar_bot - cap_dir * 3);
+                ctx.stroke();
+            }
+        }
+    }
+
+    // ====================================================================
+    //  14.  v2.7.0 — Rollout Guidance Rendering
     //       (Boeing HGS-style centerline track + deviation + command)
     // ====================================================================
 
@@ -702,7 +1013,7 @@
     }
 
     // ====================================================================
-    //  13.  v2.7.0 — CAT III Annunciations
+    //  15.  v2.7.0 — CAT III Annunciations
     //        (CAT II, CAT IIIA, CAT IIIB, LAND 3, LAND 2, FLARE, ROLLOUT, NO DH)
     // ====================================================================
 
@@ -789,7 +1100,7 @@
     }
 
     // ====================================================================
-    //  14.  v2.7.0 — EVS Visualization
+    //  16.  v2.7.0 — EVS Visualization
     //        (EVS active box, contrast cue, visibility indication)
     // ====================================================================
 
@@ -867,7 +1178,7 @@
     }
 
     // ====================================================================
-    //  15.  Debug overlay layers
+    //  17.  Debug overlay layers
     // ====================================================================
 
     function draw_debug_overlays(alpha) {
@@ -920,7 +1231,7 @@
     }
 
     // ====================================================================
-    //  16.  Optical realism: phosphor effect & micro brightness breathing
+    //  18.  Optical realism: phosphor effect & micro brightness breathing
     // ====================================================================
 
     function apply_optical_effects() {
@@ -955,14 +1266,26 @@
         // Apply via global alpha adjustment
         var brightness_alpha = effective_brightness;
 
-        // --- Phosphor persistence (glow trail) ---
+        // --- Phosphor persistence (correct accumulation algorithm) ---
+        // phosphor L:Var range: 0..1.  Typical HGS value: 0.04 (fast P43 phosphor).
+        // decay_alpha: how much of the previous trail remains each frame.
+        //   phosphor=0.04 → decay=0.65 (fast, ~8-frame half-life)
+        //   phosphor=0.20 → decay=0.85 (slow, ~40-frame half-life)
+        //   phosphor=0.50 → decay=0.94 (very slow)
         if (phosphor > 0.01 && phosphorCtx && phosphorCanvas) {
-            phosphorCtx.globalAlpha = clamp(phosphor * 0.3, 0.0, 0.5);
+            var decay_alpha = clamp(0.55 + phosphor * 0.8, 0.55, 0.96);
+            // Step 1: Fade existing trail (draw black rect at 1-decay opacity)
+            phosphorCtx.globalAlpha = 1.0 - decay_alpha;
+            phosphorCtx.fillStyle = "black";
+            phosphorCtx.fillRect(0, 0, phosphorCanvas.width, phosphorCanvas.height);
+            // Step 2: Accumulate current frame into phosphor buffer
+            phosphorCtx.globalAlpha = 1.0;
             phosphorCtx.drawImage(canvas, 0, 0);
+            // Step 3: Composite phosphor buffer onto main canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.globalAlpha = brightness_alpha;
             ctx.drawImage(phosphorCanvas, 0, 0);
-            phosphorCtx.clearRect(0, 0, phosphorCanvas.width, phosphorCanvas.height);
+            ctx.globalAlpha = 1.0;
         } else {
             ctx.globalAlpha = brightness_alpha;
         }
@@ -988,7 +1311,7 @@
     }
 
     // ====================================================================
-    //  17.  FPS / timing diagnostics display
+    //  19.  FPS / timing diagnostics display
     // ====================================================================
 
     function draw_diagnostics() {
@@ -1016,7 +1339,77 @@
     }
 
     // ====================================================================
-    //  18.  Main draw function
+    //  20a.  v3.3.0 — HUD power-off phosphor drain
+    //       Renders decaying phosphor for POWER_OFF_DRAIN_FRAMES frames
+    //       after the HUD is powered off, then clears the phosphor buffer.
+    // ====================================================================
+    function hud_power_off_transition() {
+        powerOffFrames++;
+        if (powerOffFrames <= POWER_OFF_DRAIN_FRAMES) {
+            // Exponential decay: 0.6^frame gives rapid but smooth fade
+            var drain_alpha = Math.pow(0.6, powerOffFrames);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (phosphorCanvas) {
+                ctx.globalAlpha = drain_alpha;
+                ctx.drawImage(phosphorCanvas, 0, 0);
+                ctx.globalAlpha = 1.0;
+            }
+        } else {
+            // Drain complete — clear the phosphor buffer so no ghost on re-power
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (phosphorCtx && phosphorCanvas) {
+                phosphorCtx.clearRect(0, 0, phosphorCanvas.width, phosphorCanvas.height);
+            }
+        }
+    }
+
+    // ====================================================================
+    //  20b.  v3.3.0 — HUD warm-up scan animation
+    //       Shown during deploy_phase=2 (TRANSITION) while fraction < 0.5
+    //       (HUD glass moving into position, system initialising)
+    // ====================================================================
+    function draw_hud_warmup(deploy_fraction) {
+        var progress = clamp(deploy_fraction * 2.0, 0.0, 1.0);  // 0..1 over first half of deploy
+        var w = canvas.width;
+        var h = canvas.height;
+        var cy = h * 0.5;
+        // --- Scan line sweeping down ---
+        var scan_y = cy - h * 0.3 + progress * h * 0.6;
+        var scan_alpha = 0.5 * (1.0 - Math.abs(progress - 0.5) * 2.0) + 0.1;  // bell curve
+        set_hud_style(scan_alpha * 0.6, 1.0);
+        ctx.beginPath();
+        ctx.moveTo(w * 0.1, scan_y);
+        ctx.lineTo(w * 0.9, scan_y);
+        ctx.stroke();
+        // --- Corner brackets (combiner alignment reference) ---
+        var comb = get_combiner();
+        var bx = comb ? comb.x : w * 0.1;
+        var by = comb ? comb.y : h * 0.15;
+        var bw = comb ? comb.w : w * 0.8;
+        var bh = comb ? comb.h : h * 0.7;
+        var corner_len = 20;
+        var corner_a = progress * 0.5;
+        set_hud_style(corner_a, 1.5);
+        // Top-left
+        ctx.beginPath(); ctx.moveTo(bx, by + corner_len); ctx.lineTo(bx, by); ctx.lineTo(bx + corner_len, by); ctx.stroke();
+        // Top-right
+        ctx.beginPath(); ctx.moveTo(bx + bw - corner_len, by); ctx.lineTo(bx + bw, by); ctx.lineTo(bx + bw, by + corner_len); ctx.stroke();
+        // Bottom-left
+        ctx.beginPath(); ctx.moveTo(bx, by + bh - corner_len); ctx.lineTo(bx, by + bh); ctx.lineTo(bx + corner_len, by + bh); ctx.stroke();
+        // Bottom-right
+        ctx.beginPath(); ctx.moveTo(bx + bw - corner_len, by + bh); ctx.lineTo(bx + bw, by + bh); ctx.lineTo(bx + bw, by + bh - corner_len); ctx.stroke();
+        // --- "INITIALISING" text flash at 25% progress ---
+        if (progress > 0.15 && progress < 0.55) {
+            var txt_alpha = Math.sin((progress - 0.15) / 0.4 * Math.PI) * 0.6;
+            set_hud_style(txt_alpha, 1);
+            ctx.font = "11px monospace";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("HGS INITIALISING", w * 0.5, by + bh * 0.5);
+        }
+    }
+    // ====================================================================
+    //  20c.  Main draw function
     // ====================================================================
 
     function draw() {
@@ -1033,30 +1426,44 @@
         var deploy_fraction = read_lvar("L:C_HUD_Deploy_Fraction");
         var deploy_power = read_lvar("L:C_HUD_Deploy_Power");
         
-        // Fallback: if deployment L:vars not available, use legacy HUD_Active
+        // ---- Detect power-off transition ----
+        var is_powered;
         if (isNaN(deploy_phase)) {
+            // Fallback: legacy HUD_Active L:var
             var hud_active = read_lvar("L:C_HUD_HUD_Active");
-            if (isNaN(hud_active) || hud_active < 0.5) {
-                draw_diagnostics();
-                return;
-            }
+            is_powered = (!isNaN(hud_active) && hud_active >= 0.5);
         } else {
-            // HUD is stowed or no power — skip all rendering
-            if (deploy_phase < 1.5 || deploy_power < 0.5) {
-                draw_diagnostics();
-                return;
-            }
+            is_powered = (deploy_phase >= 1.5 && (!isNaN(deploy_power) ? deploy_power >= 0.5 : true));
         }
+        // Detect transition: powered ON this frame (reset drain counter)
+        if (is_powered && prevDeployPhase <= 1) {
+            powerOffFrames = 0;
+        }
+        prevDeployPhase = isNaN(deploy_phase) ? (is_powered ? 3 : 1) : deploy_phase;
+        if (!is_powered) {
+            hud_power_off_transition();
+            draw_diagnostics();
+            return;
+        }
+        // Power is on — reset drain counter
+        powerOffFrames = 0;
 
-        // Read weather-adaptive rendering params
+        // ---- Weather-adaptive rendering params ----
         var line_width = read_lvar("L:C_HUD_WeatherLineW");
         var alpha = read_lvar("L:C_HUD_WeatherAlpha");
         if (isNaN(line_width) || line_width <= 0) line_width = 2.0;
         if (isNaN(alpha) || alpha <= 0) alpha = 0.8;
 
-        // Scale transparency by deployment fraction (fade in/out on deploy/stow)
-        if (!isNaN(deploy_fraction) && deploy_fraction >= 0.0) {
-            alpha *= clamp(deploy_fraction, 0.0, 1.0);
+        // ---- Deployment fade (deploy_fraction scales alpha during transition) ----
+        var eff_fraction = isNaN(deploy_fraction) ? 1.0 : clamp(deploy_fraction, 0.0, 1.0);
+        alpha *= eff_fraction;
+
+        // ---- Warm-up animation during first half of deployment transition ----
+        if (!isNaN(deploy_phase) && deploy_phase >= 1.5 && deploy_phase < 2.5 && eff_fraction < 0.5) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            draw_hud_warmup(eff_fraction);
+            draw_diagnostics();
+            return;
         }
 
         // Read collimation correction (screen-space delta for viewpoint compensation)
@@ -1080,15 +1487,15 @@
         // Symbology position is offset by collimation correction to simulate
         // optical collimation (world-referenced stability despite head movement)
         ctx.save();
-        if (collimated && collimated >= 0.5) {
-            ctx.translate(coll_dx, coll_dy);
-        }
-        
-        // Clip rendering to combiner glass area (symbology only visible inside HUD glass)
+        // v3.0.1 — FIX: Clip BEFORE translate so clipping region stays fixed to combiner
+        // glass.  The collimation offset must only affect symbols, not the clipping rect.
         if (comb && comb.w > 0 && comb.h > 0) {
             ctx.beginPath();
             ctx.rect(comb.x, comb.y, comb.w, comb.h);
             ctx.clip();
+        }
+        if (collimated && collimated >= 0.5) {
+            ctx.translate(coll_dx, coll_dy);
         }
 
         draw_debug_overlays(alpha);
@@ -1099,6 +1506,10 @@
         draw_drift_cue(alpha);
         draw_guidance(alpha);
         draw_flare(alpha);
+
+        // v3.1.0: Speed and altitude tapes
+        draw_speed_tape(alpha, comb);
+        draw_altitude_tape(alpha, comb);
 
         // v2.7.0: New rendering layers
         draw_rollout(alpha);          // Rollout guidance (centerline, deviation, command)
@@ -1115,7 +1526,7 @@
     }
 
     // ====================================================================
-    //  19.  Per-frame loop
+    //  21.  Per-frame loop
     // ====================================================================
 
     function frame() {
@@ -1125,11 +1536,11 @@
     }
 
     // ====================================================================
-    //  20.  Bootstrap
+    //  22.  Bootstrap
     // ====================================================================
     fit_canvas();
     requestAnimationFrame(frame);
 
-    console.log("[C_HUD] conformal_renderer.js v3.0.0 loaded  –  canvas " +
+    console.log("[C_HUD] conformal_renderer.js v3.4.0 loaded  –  canvas " +
                 canvas.width + "×" + canvas.height);
 })();

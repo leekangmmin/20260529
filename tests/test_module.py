@@ -125,9 +125,12 @@ def weather_compute_params(vis_m, ws=None):
 HUD_ALLOWED_AIRCRAFT = [
     "pmdg 737-800",
     "pmdg 737-700",
-    "fbw a32nx",
+    "pmdg 777-300er",
+    "ini a350",
+    "inibuilds a350",
+    "ini a330",
+    "fbw",
     "headwind a330-900",
-    "asobo boeing 747-8i",
     "asobo boeing 787-10",
     "wt_787_10",
 ]
@@ -338,14 +341,31 @@ class TestAircraftIdentification:
         assert aircraft_supports_hud("PMDG 737-800") is True
         assert aircraft_supports_hud("PMDG 737-700") is True
 
-    def test_fbw_a32nx(self):
+    def test_pmdg_777(self):
+        assert aircraft_supports_hud("PMDG 777-300ER") is True
+
+    def test_ini_a350(self):
+        assert aircraft_supports_hud("INI A350") is True
+
+    def test_inibuilds_a350(self):
+        assert aircraft_supports_hud("INIBUILDS A350") is True
+        assert aircraft_supports_hud("iniBuilds A350") is True
+
+    def test_ini_a330(self):
+        assert aircraft_supports_hud("INI A330") is True
+
+    def test_fbw_variants(self):
+        """FBW prefix should match all FBW variants."""
         assert aircraft_supports_hud("FBW A32NX") is True
+        assert aircraft_supports_hud("FBW A380") is True
+        assert aircraft_supports_hud("FBW A32NX (Experimental)") is True
 
     def test_headwind_a330(self):
         assert aircraft_supports_hud("HEADWIND A330-900") is True
 
-    def test_asobo_747(self):
-        assert aircraft_supports_hud("ASOBO BOEING 747-8I") is True
+    def test_asobo_747_removed(self):
+        """ASOBO BOEING 747-8I was removed from the allowlist."""
+        assert aircraft_supports_hud("ASOBO BOEING 747-8I") is False
 
     def test_asobo_787(self):
         assert aircraft_supports_hud("ASOBO BOEING 787-10") is True
@@ -370,6 +390,21 @@ class TestAircraftIdentification:
     def test_partial_prefix_match(self):
         """A 'PMDG 737-800NGXu' should match since it starts with 'PMDG 737-800'."""
         assert aircraft_supports_hud("PMDG 737-800NGXu") is True
+
+    def test_fbw_match_still_works(self):
+        """'FBW A32NX' should still match with the new 'FBW' prefix."""
+        assert aircraft_supports_hud("FBW A32NX") is True
+        assert aircraft_supports_hud("fbw a32nx") is True
+
+    def test_inibuilds_a350_uppercase_variant(self):
+        """'INIBUILDS A350' (all caps) should match."""
+        assert aircraft_supports_hud("INIBUILDS A350") is True
+
+    def test_no_spurious_match(self):
+        """Make sure FBW prefix doesn't match unintended aircraft."""
+        # There shouldn't be false positives for non-FBW aircraft
+        # that happen to contain 'fbw' as a substring
+        assert aircraft_supports_hud("CESSNA 172") is False
 
 
 class TestHUDGuardLogic:

@@ -182,10 +182,15 @@ typedef struct HUDProfile {
 // ============================================================================
 
 /// Number of built‑in HUD profiles.
-#define C_HUD_NUM_PROFILES  6
+#define C_HUD_NUM_PROFILES  13
 
 /// Retrieve the HUD profile matching a given aircraft model string.
 /// Returns NULL if no match is found.
+extern const HUDProfile profile_fenix_a320;
+extern const HUDProfile profile_ini_a330;
+extern const HUDProfile profile_fbw_a32nx;
+extern const HUDProfile profile_headwind_a330;
+extern const HUDProfile profile_pmdg_737_max;
 const HUDProfile* hud_profile_match(const char* aircraft_id);
 
 /// Get a profile by index (0 … C_HUD_NUM_PROFILES - 1).

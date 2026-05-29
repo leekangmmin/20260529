@@ -19,6 +19,11 @@
 //  where h is radio altitude, h_touchdown is the touchdown height
 //  (typically 0), and flare_constant modulates the flare aggressiveness.
 //
+//  Per-aircraft flare_constant values are defined in aircraft_profiles.h
+//  and are injected into FlareState::flare_constant_override before calling
+//  flare_compute().  When flare_constant_override is zero (the default),
+//  flare_compute() falls back to the internal FLARE_CONSTANT #define.
+//
 //  Required SimVars:
 //    · RADIO HEIGHT (radio_altitude_m)
 //    · VERTICAL SPEED (vertical_speed_ms, positive = up)
@@ -40,6 +45,11 @@ typedef struct FlareState {
     FLOAT64 vertical_speed_ms;   // vertical speed (m/s, positive = up)
     FLOAT64 groundspeed_ms;      // true ground speed (m/s)
     FLOAT64 gs_deviation_deg;    // glideslope deviation (deg, positive = above)
+
+    // --- Per-aircraft flare constant override ---
+    // Set to 0.0 (default) to use the internal fallback (FLARE_CONSTANT 0.10).
+    // Set to a value > 0.0 (e.g. 0.08–0.15) to override per aircraft_profile.
+    FLOAT64 flare_constant_override;
 
     // --- Flare command ---
     FLOAT64 flare_cue_vs;        // commanded vertical speed (m/s)
@@ -98,6 +108,10 @@ typedef struct TouchdownZone {
 // ============================================================================
 
 /// Compute flare guidance state.
+///
+/// flare_compute() reads FlareState::flare_constant_override before computing
+/// the flare path.  When the override is > 0.0 it is used in place of the
+/// internal fallback constant; otherwise the fallback applies.
 ///
 /// @param flare    [in/out] Flare state with inputs populated
 /// @param dt_s     Frame delta time (seconds)

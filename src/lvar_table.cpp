@@ -358,6 +358,17 @@ static const char* const g_lvar_names[LVAR_COUNT] = {
     [LVAR_HUD_COLLIMATED]        = "L:C_HUD_Collimated",
 
 
+
+    // ================================================================
+    //  v3.1.0 — Speed and altitude tape L:vars
+    // ================================================================
+    [LVAR_TAPE_IAS_KT]      = "L:C_HUD_Tape_IAS_kt",
+    [LVAR_TAPE_ALT_FT]      = "L:C_HUD_Tape_Alt_ft",
+    [LVAR_TAPE_VS_FPM]      = "L:C_HUD_Tape_VS_fpm",
+    [LVAR_TAPE_IAS_TREND]   = "L:C_HUD_Tape_IAS_Trend",
+    [LVAR_TAPE_ALT_TREND]   = "L:C_HUD_Tape_Alt_Trend",
+    [LVAR_TAPE_SPEED_ACTIVE]= "L:C_HUD_Tape_Speed_Active",
+    [LVAR_TAPE_ALT_ACTIVE]  = "L:C_HUD_Tape_Alt_Active",
 };
 
 // ============================================================================

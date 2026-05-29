@@ -18,11 +18,14 @@
 static const char* const hud_allowed_aircraft[] = {
     "PMDG 737-800",
     "PMDG 737-700",
+    "PMDG 737 MAX",
     "PMDG 777-300ER",
     "INI A350",
-    "FBW A32NX",
+    "INIBUILDS A350",
+    "INI A330",
+    "FBW",
     "HEADWIND A330-900",
-    "ASOBO BOEING 747-8I",
+    "FENIX A320",
     "ASOBO BOEING 787-10",
     "WT_787_10",
     0  // sentinel
@@ -136,6 +139,11 @@ GAUGE_CALLBACK gauge_callback_post_install(FsContext ctx,
     register_simvar("ACCELERATION BODY Z",       &g_state.tok_accel);
     register_simvar("AIRSPEED INDICATED",        &g_state.tok_indicated_airspeed);
     register_simvar("SIM ON GROUND",             &g_state.tok_on_ground);
+
+    // v3.1.0 — Live eyepoint position for real-time collimation
+    register_simvar("EYEPOINT POSITION X",       &g_state.tok_eyepoint_x);
+    register_simvar("EYEPOINT POSITION Y",       &g_state.tok_eyepoint_y);
+    register_simvar("EYEPOINT POSITION Z",       &g_state.tok_eyepoint_z);
 
     // v2.2.0 — NAV1 frequency
     register_simvar("NAV ACTIVE FREQUENCY:1",    &g_state.tok_nav1_freq);
