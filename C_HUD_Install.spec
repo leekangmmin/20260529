@@ -45,6 +45,13 @@ a = Analysis(
         "installer.updater",
         # GUI (loaded dynamically by some paths)
         "installer.gui",
+        # customtkinter UI toolkit
+        "customtkinter",
+        "customtkinter.windows",
+        "customtkinter.windows.widgets",
+        "packaging",
+        "packaging.version",
+        "packaging.specifiers",
         # stdlib tkinter
         "tkinter",
         "tkinter.ttk",
