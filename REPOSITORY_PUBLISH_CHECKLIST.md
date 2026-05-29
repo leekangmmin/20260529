@@ -14,7 +14,7 @@
 | **Visibility** | Public |
 | **Version** | v2.7.0 |
 | **Branch** | `main` |
-| **Latest Commit SHA** | _(see below after push)_ |
+| **Latest Commit SHA** | `9cfc9edfe9d470e1b88c2233044816202905f746` |
 
 ---
 
@@ -47,26 +47,11 @@
 
 ---
 
-## 4. Git Status (Pre-Commit)
+## 4. Git Status (Post-Commit)
 
 ```
 On branch main
-
-No commits yet
-
-Untracked files:
-  .gitignore
-  CMakeLists.txt
-  C_HUD_RUNWAY_PRODUCTION_SUMMARY.md
-  README.md
-  audit/
-  include/
-  installer/
-  layout.json
-  panel.cfg
-  panel/
-  src/
-  tests/
+nothing to commit, working tree clean
 ```
 
 ---
@@ -104,7 +89,7 @@ Untracked files:
 
 ## 7. Repository Verification
 
-- [x] Repository builds `cmake -B build` (requires MSFS SDK)
+- [x] Repository builds via `cmake -B build` (requires MSFS SDK toolchain)
 - [x] All 1230 tests pass (`python3 -m pytest tests/ -v`)
 - [x] `.gitignore` is respected (40+ patterns, already audited)
 - [x] No source code modified
@@ -120,6 +105,7 @@ Untracked files:
 | Detail | Value |
 |---|---|
 | **GitHub URL** | `https://github.com/leekangmmin/20260529` |
+| **Latest Commit SHA** | `9cfc9edfe9d470e1b88c2233044816202905f746` |
 | **Branch** | `main` |
 | **Publish Timestamp** | 2026-05-29 |
 
