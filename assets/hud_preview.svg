@@ -1,199 +1,264 @@
-<svg width="900" height="540" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 540">
+<svg width="900" height="520" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520">
   <defs>
-    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="#0b1e3a"/>
-      <stop offset="55%"  stop-color="#0e2d50"/>
-      <stop offset="100%" stop-color="#1a3a60"/>
+    <!-- Daylight approach sky -->
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#6ea8d4"/>
+      <stop offset="60%"  stop-color="#a8cce0"/>
+      <stop offset="100%" stop-color="#c8dde8"/>
     </linearGradient>
-    <linearGradient id="groundGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="#1c140a"/>
-      <stop offset="100%" stop-color="#0d0a05"/>
+    <!-- Hazy horizon -->
+    <linearGradient id="horizon" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#c8dde8"/>
+      <stop offset="100%" stop-color="#d4c9a8"/>
     </linearGradient>
-    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="2.2" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
+    <!-- Ground terrain -->
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#8a9c6e"/>
+      <stop offset="40%"  stop-color="#6b7a52"/>
+      <stop offset="100%" stop-color="#4a5438"/>
+    </linearGradient>
+    <!-- Runway pavement -->
+    <linearGradient id="pavement" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#5a5a5a"/>
+      <stop offset="100%" stop-color="#3a3a3a"/>
+    </linearGradient>
+    <!-- Subtle HUD symbol glow (minimal — real glass) -->
+    <filter id="subtle" x="-15%" y="-15%" width="130%" height="130%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="0.8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
-    <filter id="glowStrong" x="-40%" y="-40%" width="180%" height="180%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-    <radialGradient id="vignette" cx="50%" cy="50%" r="70%">
-      <stop offset="0%" stop-color="transparent"/>
-      <stop offset="100%" stop-color="#000008" stop-opacity="0.6"/>
+    <!-- Cockpit window vignette -->
+    <radialGradient id="vig" cx="50%" cy="50%" r="65%">
+      <stop offset="0%"   stop-color="transparent"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.45"/>
     </radialGradient>
+    <!-- Windshield glare -->
+    <linearGradient id="glare" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </linearGradient>
   </defs>
 
-  <!-- BACKGROUND -->
-  <rect width="900" height="540" fill="#080e1a"/>
-  <rect width="900" height="310" fill="url(#skyGrad)"/>
-  <rect y="310" width="900" height="230" fill="url(#groundGrad)"/>
-  <rect y="295" width="900" height="30" fill="#142038" opacity="0.7"/>
+  <!-- ══ OUTSIDE WORLD (cockpit view on approach, daylight) ══ -->
 
-  <!-- Ground texture -->
-  <g stroke="#1a1208" stroke-width="1" opacity="0.4">
-    <line x1="0" y1="350" x2="900" y2="350"/>
-    <line x1="0" y1="400" x2="900" y2="400"/>
-    <line x1="0" y1="460" x2="900" y2="460"/>
-    <line x1="0" y1="510" x2="900" y2="510"/>
+  <!-- Sky -->
+  <rect width="900" height="520" fill="url(#sky)"/>
+
+  <!-- Hazy horizon band -->
+  <rect y="262" width="900" height="60" fill="url(#horizon)"/>
+
+  <!-- Ground / terrain -->
+  <rect y="308" width="900" height="212" fill="url(#ground)"/>
+
+  <!-- Fields / terrain texture -->
+  <g opacity="0.25" fill="none" stroke="#5a6840" stroke-width="1">
+    <line x1="0" y1="360" x2="900" y2="360"/>
+    <line x1="0" y1="420" x2="900" y2="420"/>
+    <line x1="100" y1="308" x2="0"   y2="520"/>
+    <line x1="300" y1="308" x2="100" y2="520"/>
+    <line x1="500" y1="308" x2="300" y2="520"/>
+    <line x1="700" y1="308" x2="500" y2="520"/>
+    <line x1="900" y1="308" x2="700" y2="520"/>
   </g>
 
-  <!-- Approach lights -->
-  <g fill="#ffffaa" opacity="0.3">
-    <circle cx="450" cy="375" r="1.5"/>
-    <circle cx="450" cy="415" r="1.5"/>
-    <circle cx="450" cy="455" r="1.5"/>
-    <circle cx="430" cy="395" r="1.2"/><circle cx="470" cy="395" r="1.2"/>
-    <circle cx="415" cy="435" r="1.2"/><circle cx="485" cy="435" r="1.2"/>
-    <circle cx="400" cy="470" r="1.2"/><circle cx="500" cy="470" r="1.2"/>
+  <!-- Runway pavement (perspective) -->
+  <polygon points="390,310 510,310 590,520 310,520" fill="url(#pavement)" opacity="0.9"/>
+  <!-- Runway centerline markings -->
+  <g stroke="#e8e8d0" stroke-width="3" stroke-dasharray="28,20" opacity="0.7">
+    <line x1="450" y1="316" x2="450" y2="520"/>
+  </g>
+  <!-- Runway edge lines -->
+  <line x1="390" y1="310" x2="310" y2="520" stroke="#e0e0c0" stroke-width="2" opacity="0.55"/>
+  <line x1="510" y1="310" x2="590" y2="520" stroke="#e0e0c0" stroke-width="2" opacity="0.55"/>
+  <!-- Runway threshold bar -->
+  <line x1="390" y1="316" x2="510" y2="316" stroke="#e8e8d0" stroke-width="4" opacity="0.6"/>
+  <!-- Touchdown zone markings -->
+  <g stroke="#e8e8d0" stroke-width="3" opacity="0.45">
+    <line x1="405" y1="390" x2="428" y2="390"/>
+    <line x1="472" y1="390" x2="495" y2="390"/>
+    <line x1="400" y1="430" x2="428" y2="430"/>
+    <line x1="472" y1="430" x2="500" y2="430"/>
+  </g>
+  <!-- Approach lighting (ALSF) -->
+  <g fill="#ffffc0" opacity="0.55">
+    <rect x="448" y="300" width="4" height="8" rx="1"/>
+    <rect x="448" y="285" width="4" height="6" rx="1"/>
+    <rect x="448" y="272" width="4" height="5" rx="1"/>
+    <rect x="436" y="290" width="4" height="5" rx="1"/>
+    <rect x="460" y="290" width="4" height="5" rx="1"/>
+    <rect x="424" y="280" width="4" height="4" rx="1"/>
+    <rect x="472" y="280" width="4" height="4" rx="1"/>
+  </g>
+  <!-- PAPI (2 red, 2 white = on glidepath) -->
+  <g opacity="0.8">
+    <rect x="290" y="318" width="10" height="6" rx="1" fill="#ff5555"/>
+    <rect x="306" y="318" width="10" height="6" rx="1" fill="#ff5555"/>
+    <rect x="322" y="318" width="10" height="6" rx="1" fill="#ffffff"/>
+    <rect x="338" y="318" width="10" height="6" rx="1" fill="#ffffff"/>
   </g>
 
-  <!-- PAPI lights -->
-  <circle cx="308" cy="368" r="2.5" fill="#ff4444" opacity="0.65"/>
-  <circle cx="324" cy="368" r="2.5" fill="#ff4444" opacity="0.65"/>
-  <circle cx="340" cy="368" r="2.5" fill="#ffffff" opacity="0.65"/>
-  <circle cx="356" cy="368" r="2.5" fill="#ffffff" opacity="0.65"/>
+  <!-- Windshield glare overlay -->
+  <rect width="900" height="520" fill="url(#glare)"/>
 
-  <!-- ════ HUD SYMBOLOGY ════ -->
+  <!-- ══════════════════════════════════════════
+       BOEING HGS SYMBOLOGY
+       Color: #C8FF78 (real HGS yellow-green)
+       Minimal glow — clean combiner glass look
+       ══════════════════════════════════════════ -->
 
-  <!-- CONFORMAL RUNWAY OUTLINE -->
-  <g filter="url(#glowStrong)">
-    <polygon points="352,312 548,312 628,490 272,490"
-      fill="none" stroke="#00e054" stroke-width="2.2" opacity="0.95"/>
-    <line x1="450" y1="312" x2="450" y2="490"
-      stroke="#00e054" stroke-width="1.2" stroke-dasharray="14,10" opacity="0.65"/>
-    <line x1="370" y1="420" x2="530" y2="420"
-      stroke="#00e054" stroke-width="1.5" opacity="0.5"/>
-    <line x1="355" y1="450" x2="545" y2="450"
-      stroke="#00e054" stroke-width="1.5" opacity="0.38"/>
-    <line x1="352" y1="318" x2="388" y2="318" stroke="#00e054" stroke-width="2" opacity="0.6"/>
-    <line x1="512" y1="318" x2="548" y2="318" stroke="#00e054" stroke-width="2" opacity="0.6"/>
-  </g>
+  <g filter="url(#subtle)">
 
-  <!-- PITCH LADDER -->
-  <g stroke="#00cc44" stroke-width="1.5" fill="none" filter="url(#glow)" opacity="0.82">
-    <line x1="300" y1="195" x2="370" y2="195"/>
-    <line x1="530" y1="195" x2="600" y2="195"/>
-    <line x1="330" y1="230" x2="388" y2="230"/>
-    <line x1="512" y1="230" x2="570" y2="230"/>
-    <!-- 0 deg horizon — brighter -->
-    <line x1="185" y1="268" x2="378" y2="268" stroke="#00ee55" stroke-width="2.2"/>
-    <line x1="522" y1="268" x2="715" y2="268" stroke="#00ee55" stroke-width="2.2"/>
-    <line x1="330" y1="305" x2="388" y2="305"/>
-    <line x1="512" y1="305" x2="570" y2="305"/>
-    <!-- Below-horizon dashes -->
-    <line x1="300" y1="338" x2="370" y2="338" stroke-dasharray="4,3" opacity="0.6"/>
-    <line x1="530" y1="338" x2="600" y2="338" stroke-dasharray="4,3" opacity="0.6"/>
-  </g>
+    <!-- ── PITCH LADDER ── -->
+    <g stroke="#C8FF78" stroke-width="1.8" fill="none" opacity="0.92">
+      <!-- +10° -->
+      <line x1="298" y1="188" x2="374" y2="188"/>
+      <line x1="526" y1="188" x2="602" y2="188"/>
+      <!-- +5° (shorter) -->
+      <line x1="332" y1="224" x2="390" y2="224"/>
+      <line x1="510" y1="224" x2="568" y2="224"/>
+      <!-- 0° HORIZON — longer, full width -->
+      <line x1="160" y1="262" x2="382" y2="262" stroke-width="2.2"/>
+      <line x1="518" y1="262" x2="740" y2="262" stroke-width="2.2"/>
+      <!-- -2.5° (aircraft on glidepath, nose slightly low) -->
+      <line x1="332" y1="280" x2="390" y2="280" stroke-dasharray="none"/>
+      <line x1="510" y1="280" x2="568" y2="280"/>
+      <!-- -5° (dashed — below horizon) -->
+      <line x1="298" y1="298" x2="374" y2="298" stroke-dasharray="6,4"/>
+      <line x1="526" y1="298" x2="602" y2="298" stroke-dasharray="6,4"/>
+    </g>
 
-  <!-- Pitch numbers -->
-  <g fill="#00cc44" font-family="'Courier New', Courier, monospace" font-size="13" filter="url(#glow)" opacity="0.82">
-    <text x="276" y="199" text-anchor="end">10</text>
-    <text x="624" y="199">10</text>
-    <text x="306" y="234" text-anchor="end">5</text>
-    <text x="574" y="234">5</text>
-    <text x="306" y="309" text-anchor="end">-5</text>
-    <text x="574" y="309">-5</text>
-    <text x="276" y="342" text-anchor="end" opacity="0.6">-10</text>
-    <text x="624" y="342" opacity="0.6">-10</text>
-  </g>
+    <!-- Pitch numbers -->
+    <g fill="#C8FF78" font-family="'Arial Narrow', Arial, sans-serif" font-size="13" opacity="0.9">
+      <text x="282" y="192" text-anchor="end">10</text>
+      <text x="618" y="192">10</text>
+      <text x="314" y="228" text-anchor="end">5</text>
+      <text x="584" y="228">5</text>
+      <text x="282" y="302" text-anchor="end">-5</text>
+      <text x="618" y="302">-5</text>
+    </g>
 
-  <!-- FLIGHT PATH VECTOR -->
-  <g filter="url(#glowStrong)" stroke="#00ff66" fill="none" stroke-width="2.2">
-    <circle cx="450" cy="255" r="12"/>
-    <line x1="462" y1="255" x2="488" y2="255"/>
-    <line x1="412" y1="255" x2="438" y2="255"/>
-    <line x1="450" y1="243" x2="450" y2="232"/>
-  </g>
+    <!-- ── FLIGHT PATH VECTOR ── -->
+    <!-- The most important symbol — centered at (450, 252) -->
+    <g stroke="#C8FF78" fill="none" stroke-width="2.2">
+      <circle cx="450" cy="252" r="13"/>
+      <!-- Wings -->
+      <line x1="463" y1="252" x2="490" y2="252"/>
+      <line x1="410" y1="252" x2="437" y2="252"/>
+      <!-- Tail -->
+      <line x1="450" y1="239" x2="450" y2="228"/>
+    </g>
 
-  <!-- BANK ANGLE INDICATOR -->
-  <g stroke="#00cc44" stroke-width="1.5" fill="none" filter="url(#glow)" opacity="0.78">
-    <path d="M 388 148 A 66 66 0 0 1 512 148"/>
-    <line x1="450" y1="143" x2="450" y2="131"/>
-    <line x1="410" y1="157" x2="404" y2="146"/>
-    <line x1="490" y1="157" x2="496" y2="146"/>
-    <line x1="392" y1="178" x2="383" y2="168"/>
-    <line x1="508" y1="178" x2="517" y2="168"/>
-    <line x1="385" y1="202" x2="374" y2="190"/>
-    <line x1="515" y1="202" x2="526" y2="190"/>
-    <polygon points="450,158 444,171 456,171" fill="#00cc44" stroke="none"/>
-  </g>
+    <!-- ── BANK ANGLE INDICATOR ── -->
+    <g stroke="#C8FF78" stroke-width="1.6" fill="none" opacity="0.88">
+      <path d="M 392 142 A 62 62 0 0 1 508 142"/>
+      <!-- 0° index tick -->
+      <line x1="450" y1="140" x2="450" y2="128"/>
+      <!-- ±10° -->
+      <line x1="412" y1="153" x2="406" y2="142"/>
+      <line x1="488" y1="153" x2="494" y2="142"/>
+      <!-- ±20° -->
+      <line x1="395" y1="172" x2="387" y2="161"/>
+      <line x1="505" y1="172" x2="513" y2="161"/>
+      <!-- ±30° (prominent) -->
+      <line x1="388" y1="194" x2="377" y2="181"/>
+      <line x1="512" y1="194" x2="523" y2="181"/>
+      <!-- ±45° -->
+      <line x1="392" y1="142" x2="385" y2="132" opacity="0.6"/>
+      <line x1="508" y1="142" x2="515" y2="132" opacity="0.6"/>
+      <!-- Bank index (inverted triangle at 0°) -->
+      <polygon points="450,155 443,168 457,168" fill="#C8FF78" stroke="none"/>
+    </g>
 
-  <!-- ILS GLIDESLOPE SCALE -->
-  <g filter="url(#glow)" opacity="0.88">
-    <line x1="148" y1="192" x2="148" y2="338" stroke="#00cc44" stroke-width="1.5"/>
-    <line x1="140" y1="265" x2="156" y2="265" stroke="#00cc44" stroke-width="2.2"/>
-    <line x1="141" y1="228" x2="155" y2="228" stroke="#00cc44" stroke-width="1.5"/>
-    <line x1="141" y1="302" x2="155" y2="302" stroke="#00cc44" stroke-width="1.5"/>
-    <line x1="139" y1="192" x2="157" y2="192" stroke="#00cc44" stroke-width="1.2" opacity="0.55"/>
-    <line x1="139" y1="338" x2="157" y2="338" stroke="#00cc44" stroke-width="1.2" opacity="0.55"/>
-    <!-- GS deviation diamond (slightly below center) -->
-    <polygon points="148,280 140,288 148,296 156,288"
-      fill="#00ff66" stroke="none" filter="url(#glowStrong)"/>
-    <text x="125" y="190" fill="#00cc44" font-family="'Courier New', monospace" font-size="11" text-anchor="end">G/S</text>
-  </g>
+    <!-- ── CONFORMAL RUNWAY OUTLINE ── -->
+    <g stroke="#C8FF78" stroke-width="2.4" fill="none" opacity="0.95">
+      <polygon points="388,312 512,312 595,490 305,490"/>
+      <!-- Runway centerline -->
+      <line x1="450" y1="318" x2="450" y2="490"
+        stroke-width="1.4" stroke-dasharray="16,12" opacity="0.7"/>
+      <!-- Threshold bar -->
+      <line x1="388" y1="318" x2="420" y2="318" stroke-width="2.4"/>
+      <line x1="480" y1="318" x2="512" y2="318" stroke-width="2.4"/>
+      <!-- Touchdown zone -->
+      <line x1="360" y1="415" x2="540" y2="415" stroke-width="1.4" opacity="0.55"/>
+    </g>
 
-  <!-- ILS LOCALISER SCALE -->
-  <g filter="url(#glow)" opacity="0.88">
-    <line x1="286" y1="503" x2="614" y2="503" stroke="#00cc44" stroke-width="1.5"/>
-    <line x1="450" y1="494" x2="450" y2="512" stroke="#00cc44" stroke-width="2.2"/>
-    <line x1="368" y1="496" x2="368" y2="510" stroke="#00cc44" stroke-width="1.5"/>
-    <line x1="532" y1="496" x2="532" y2="510" stroke="#00cc44" stroke-width="1.5"/>
-    <line x1="286" y1="496" x2="286" y2="510" stroke="#00cc44" stroke-width="1.2" opacity="0.55"/>
-    <line x1="614" y1="496" x2="614" y2="510" stroke="#00cc44" stroke-width="1.2" opacity="0.55"/>
-    <!-- LOC deviation diamond (slightly right) -->
-    <polygon points="468,503 460,495 468,487 476,495"
-      fill="#00ff66" stroke="none" filter="url(#glowStrong)"/>
-    <text x="450" y="526" fill="#00cc44" font-family="'Courier New', monospace" font-size="11" text-anchor="middle">LOC</text>
-  </g>
+    <!-- ── FLARE CUE (at touchdown zone) ── -->
+    <g stroke="#C8FF78" stroke-width="2.6" fill="none" opacity="0.92">
+      <polyline points="430,455 450,436 470,455"/>
+      <line x1="450" y1="436" x2="450" y2="424"/>
+    </g>
 
-  <!-- FLARE CUE (chevron above touchdown zone) -->
-  <g filter="url(#glow)" opacity="0.9">
-    <polyline points="430,462 450,444 470,462"
-      stroke="#00ff66" stroke-width="2.8" fill="none"/>
-    <line x1="450" y1="444" x2="450" y2="432" stroke="#00ff66" stroke-width="2.8"/>
-  </g>
+    <!-- ── ILS GLIDESLOPE SCALE (left) ── -->
+    <g stroke="#C8FF78" stroke-width="1.6" fill="#C8FF78" opacity="0.88">
+      <!-- Track -->
+      <line x1="142" y1="194" x2="142" y2="332" fill="none"/>
+      <!-- Center cross -->
+      <line x1="133" y1="262" x2="151" y2="262" stroke-width="2.2"/>
+      <!-- 1-dot ticks -->
+      <line x1="135" y1="228" x2="149" y2="228"/>
+      <line x1="135" y1="297" x2="149" y2="297"/>
+      <!-- 2-dot ticks -->
+      <line x1="133" y1="194" x2="151" y2="194" opacity="0.6"/>
+      <line x1="133" y1="332" x2="151" y2="332" opacity="0.6"/>
+      <!-- Deviation diamond — slightly below center (0.5 dot low) -->
+      <polygon points="142,275 134,283 142,291 150,283" stroke="none"/>
+      <!-- Label -->
+      <text x="118" y="192" font-family="'Arial Narrow', Arial, sans-serif"
+        font-size="11" text-anchor="end" stroke="none">G/S</text>
+    </g>
 
-  <!-- SPEED BOX -->
-  <g filter="url(#glow)" opacity="0.88">
-    <rect x="38" y="243" width="86" height="40" fill="none" stroke="#00cc44" stroke-width="1.5" rx="2"/>
-    <text x="81" y="271" fill="#00ff66" font-family="'Courier New', monospace" font-size="24" font-weight="bold" text-anchor="middle">147</text>
-    <text x="38" y="240" fill="#00cc44" font-family="'Courier New', monospace" font-size="11">IAS  KT</text>
-    <text x="38" y="302" fill="#00cc44" font-family="'Courier New', monospace" font-size="12">GS  152</text>
-  </g>
+    <!-- ── ILS LOCALISER SCALE (bottom) ── -->
+    <g stroke="#C8FF78" stroke-width="1.6" fill="#C8FF78" opacity="0.88">
+      <line x1="282" y1="498" x2="618" y2="498" fill="none"/>
+      <line x1="450" y1="490" x2="450" y2="506" stroke-width="2.2"/>
+      <line x1="366" y1="492" x2="366" y2="504"/>
+      <line x1="534" y1="492" x2="534" y2="504"/>
+      <line x1="282" y1="492" x2="282" y2="504" opacity="0.6"/>
+      <line x1="618" y1="492" x2="618" y2="504" opacity="0.6"/>
+      <!-- LOC diamond — centered (on centreline) -->
+      <polygon points="450,498 442,490 450,482 458,490" stroke="none"/>
+      <text x="450" y="518" font-family="'Arial Narrow', Arial, sans-serif"
+        font-size="11" text-anchor="middle" stroke="none">LOC</text>
+    </g>
 
-  <!-- ALTITUDE BOX -->
-  <g filter="url(#glow)" opacity="0.88">
-    <rect x="776" y="243" width="86" height="40" fill="none" stroke="#00cc44" stroke-width="1.5" rx="2"/>
-    <text x="819" y="271" fill="#00ff66" font-family="'Courier New', monospace" font-size="24" font-weight="bold" text-anchor="middle">1450</text>
-    <text x="776" y="240" fill="#00cc44" font-family="'Courier New', monospace" font-size="11">ALT  FT</text>
-    <text x="776" y="302" fill="#00cc44" font-family="'Courier New', monospace" font-size="12">V/S -720</text>
-  </g>
+    <!-- ── SPEED (left) ── -->
+    <g fill="#C8FF78" font-family="'Arial Narrow', Arial, sans-serif" opacity="0.92">
+      <rect x="34" y="240" width="88" height="44" fill="none" stroke="#C8FF78" stroke-width="1.5" rx="2"/>
+      <text x="78" y="271" font-size="26" font-weight="bold" text-anchor="middle">147</text>
+      <text x="34" y="237" font-size="11">IAS  KT</text>
+      <text x="34" y="300" font-size="12">GS   152</text>
+    </g>
 
-  <!-- MODE ANNUNCIATOR -->
-  <g filter="url(#glow)" opacity="0.92">
-    <text x="330" y="116" fill="#00ff66" font-family="'Courier New', monospace" font-size="15" font-weight="bold" text-anchor="middle">LAND 3</text>
-    <text x="450" y="116" fill="#00cc44" font-family="'Courier New', monospace" font-size="15" text-anchor="middle">|</text>
-    <text x="570" y="116" fill="#00ff66" font-family="'Courier New', monospace" font-size="15" font-weight="bold" text-anchor="middle">CAT III</text>
-    <!-- Subtle box -->
-    <rect x="258" y="100" width="384" height="24" fill="none" stroke="#00cc44" stroke-width="0.8" opacity="0.4" rx="2"/>
-  </g>
+    <!-- ── ALTITUDE (right) ── -->
+    <g fill="#C8FF78" font-family="'Arial Narrow', Arial, sans-serif" opacity="0.92">
+      <rect x="778" y="240" width="88" height="44" fill="none" stroke="#C8FF78" stroke-width="1.5" rx="2"/>
+      <text x="822" y="271" font-size="26" font-weight="bold" text-anchor="middle">1480</text>
+      <text x="778" y="237" font-size="11">ALT  FT</text>
+      <text x="778" y="300" font-size="12">V/S  -720</text>
+    </g>
 
-  <!-- RADIO ALTITUDE -->
-  <g filter="url(#glow)" opacity="0.9">
-    <text x="360" y="533" fill="#00ff66" font-family="'Courier New', monospace" font-size="18" font-weight="bold" text-anchor="middle">RA  180</text>
-    <text x="560" y="533" fill="#00cc44" font-family="'Courier New', monospace" font-size="14" text-anchor="middle">DH  50</text>
-  </g>
+    <!-- ── MODE ANNUNCIATOR (top centre) ── -->
+    <g fill="#C8FF78" font-family="'Arial Narrow', Arial, sans-serif" opacity="0.92">
+      <text x="340" y="108" font-size="16" font-weight="bold" text-anchor="middle">LAND 3</text>
+      <text x="450" y="108" font-size="16" text-anchor="middle">|</text>
+      <text x="560" y="108" font-size="16" font-weight="bold" text-anchor="middle">CAT III</text>
+    </g>
 
-  <!-- VIGNETTE -->
-  <rect width="900" height="540" fill="url(#vignette)"/>
+    <!-- ── RADIO ALTITUDE ── -->
+    <g fill="#C8FF78" font-family="'Arial Narrow', Arial, sans-serif" opacity="0.92">
+      <text x="360" y="518" font-size="18" font-weight="bold" text-anchor="middle">RA  148</text>
+      <text x="560" y="518" font-size="14" text-anchor="middle">DH  50</text>
+    </g>
 
-  <!-- WATERMARK -->
-  <text x="858" y="536" fill="#00cc44" font-family="'Courier New', monospace"
-    font-size="10" text-anchor="end" opacity="0.25">C_HUD_Runway v3.4.0</text>
+  </g><!-- end filter -->
+
+  <!-- Vignette (cockpit window edge darkening) -->
+  <rect width="900" height="520" fill="url(#vig)"/>
+
+  <!-- Caption bar at bottom -->
+  <rect y="504" width="900" height="16" fill="#000000" opacity="0.35"/>
+  <text x="450" y="515" fill="#C8FF78" font-family="'Arial Narrow', Arial, sans-serif"
+    font-size="10" text-anchor="middle" opacity="0.6">
+    C_HUD_Runway v3.4.0 — Boeing HGS 4000 style · Conformal runway projection · CAT III
+  </text>
 </svg>
