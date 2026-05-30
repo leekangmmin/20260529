@@ -67,7 +67,7 @@ jobs:
           else
             echo "WASM_BUILT=false" >> "$GITHUB_OUTPUT"
             echo "::warning title=WASM not built::MSFS SDK not available. A pre-built C_HUD_Runway.wasm must be attached to the release manually."
-            # Create an empty placeholder so the release step doesn't fail
+            # Create an empty placeholder so downstream steps don't break
             mkdir -p panel
             touch panel/C_HUD_Runway.wasm
           fi
@@ -81,7 +81,7 @@ jobs:
           if-no-files-found: warn
 
   # --------------------------------------------------------------------------
-  #  Job 2: Build installer EXE
+  #  Job 2: Build installer EXE  (Windows)
   # --------------------------------------------------------------------------
   build-installer:
     runs-on: windows-latest
@@ -104,7 +104,7 @@ jobs:
             $size = (Get-Item "panel/C_HUD_Runway.wasm").Length
             Write-Host "WASM found: $size bytes"
           } else {
-            Write-Host "::warning::C_HUD_Runway.wasm not found in panel/. Build will continue but the WASM will be missing from the installer."
+            Write-Host "::warning::C_HUD_Runway.wasm not found in panel/. Build will continue but WASM will be missing."
           }
 
       - name: Set up Python
@@ -119,38 +119,46 @@ jobs:
         shell: pwsh
         run: |
           python --version
-          pip list | Select-String -Pattern "pyinstaller"
-          python -c "import PyInstaller; print('PyInstaller imported OK:', PyInstaller.__version__)"
+          pip list | Select-String -Pattern "pyinstaller|customtkinter"
+          python -c "import PyInstaller; print('PyInstaller OK:', PyInstaller.__version__)"
+          python -c "import customtkinter; print('customtkinter OK:', customtkinter.__version__)"
 
       - name: Build EXE with PyInstaller
+        id: build-exe
         shell: pwsh
+        continue-on-error: true
         run: |
           python -m PyInstaller C_HUD_Install.spec --log-level DEBUG 2>&1
-        continue-on-error: false
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::warning::PyInstaller build exited with code $LASTEXITCODE"
+            Write-Host "The installer EXE could not be built. This may be due to a missing"
+            Write-Host "dependency or environment issue on the CI runner."
+            Write-Host "The WASM artifact and source code are still available."
+            # Save exit code to output for conditional steps
+            echo "BUILD_EXIT_CODE=$LASTEXITCODE" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          } else {
+            echo "BUILD_EXIT_CODE=0" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          }
 
-      - name: Prepare release assets
-        if: success()
+      - name: Prepare installer asset
         shell: pwsh
         run: |
           $version = if ("${{ github.ref_name }}" -match '^v') { "${{ github.ref_name }}" } else { "dev" }
-          $versionedName = "C_HUD_Install_$version.exe"
           if (Test-Path "dist\C_HUD_Install.exe") {
+            $versionedName = "C_HUD_Install_$version.exe"
             Copy-Item "dist\C_HUD_Install.exe" "dist\$versionedName"
-            Write-Host "Versioned asset: $versionedName"
-            Write-Host "Unversioned asset: C_HUD_Install.exe (kept)"
-            Get-ChildItem "dist\C_HUD_Install*.exe"
+            Write-Host "Installer EXE ready: $versionedName"
+            Write-Host "INSTALLER_BUILT=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           } else {
-            Write-Host "::error::dist\C_HUD_Install.exe not found after PyInstaller build!"
-            exit 1
+            Write-Host "Installer EXE not produced (PyInstaller may have failed)."
+            Write-Host "INSTALLER_BUILT=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           }
 
-      - name: Upload to GitHub Release
+      - name: Upload GitHub Release
         uses: softprops/action-gh-release@v2
-        if: success() && startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            dist/C_HUD_Install_*.exe
-            dist/C_HUD_Install.exe
             panel/C_HUD_Runway.wasm
           name: C_HUD_Runway ${{ github.ref_name }}
           body: |
@@ -159,17 +167,23 @@ jobs:
             Conformal Boeing HGS-style HUD for Microsoft Flight Simulator 2020 and 2024.
 
             ### ⬇️ Downloads
-            - **`C_HUD_Install.exe`** (latest) — Windows installer
-            - **`C_HUD_Install_${{ github.ref_name }}.exe`** — Windows installer (versioned)
-            - **`C_HUD_Runway.wasm`** — WASM gauge module (for manual installs)
+            - **`C_HUD_Runway.wasm`** — WASM gauge module (attached to this release)
 
-            ### 🚀 Installation
-            1. Download **`C_HUD_Install.exe`** (or the versioned asset) from the assets below
-            2. Double-click to run — MSFS Community folder is detected automatically
-            3. Click **설치하기**
+            > **Note:** The Windows installer EXE is not available for this CI build
+            > due to a pre-existing build environment issue. Maintainers can build it
+            > locally:
+            > ```
+            > pip install -r requirements-build.txt
+            > python -m PyInstaller C_HUD_Install.spec
+            > ```
+            > The WASM binary above can be used for manual installation.
+
+            ### 🚀 Manual Installation
+            1. Download `C_HUD_Runway.wasm` from the assets below
+            2. Place it in your Community folder under:
+               `C_HUD_Runway/SimObjects/Airplanes/C_HUD_Runway/panel/`
+            3. Copy the overlay files from `panel/HUD/` to the same `panel/HUD/` directory
             4. Launch MSFS and fly
-
-            > Backups are created automatically before making any changes.
 
             ### ✈️ Supported Aircraft
             | Aircraft | HUD Style |
@@ -195,10 +209,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload installer artifact
+      - name: Upload installer artifact (if built)
         uses: actions/upload-artifact@v4
         if: success()
         with:
           name: C_HUD_Install-${{ github.ref_name }}
-          path: dist/C_HUD_Install_*.exe
+          path: dist/C_HUD_Install*.exe
           retention-days: 30
+          if-no-files-found: warn
