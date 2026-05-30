@@ -20,6 +20,10 @@ icon_path = INSTALLER_DIR / "icon.ico"
 if not icon_path.exists():
     icon_path = None
 
+# UPX is optional — disable by default so builds don't fail if UPX is absent.
+# Export UPX_DIR env var to re-enable (GitHub Actions: install UPX first).
+_use_upx = os.environ.get("UPX_DIR") is not None
+
 # ---------------------------------------------------------------------------
 #  Block 2: Analysis
 # ---------------------------------------------------------------------------
@@ -79,6 +83,9 @@ a = Analysis(
         "xml.etree",
         "xml.etree.ElementTree",
         "html",
+        # macOS/Unix cross-platform imports (safe even on Windows)
+        "ctypes",
+        "sysconfig",
     ],
     hookspath=[],
     hooksconfig={},
@@ -103,6 +110,10 @@ a = Analysis(
         "pkg_resources",
         "unittest",
         "pytest",
+        # Exclude tkinter test and idlelib (large, not needed)
+        "test",
+        "idlelib",
+        "turtledemo",
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -130,7 +141,7 @@ exe_kwargs = dict(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    upx=True,
+    upx=_use_upx,
     upx_exclude=[],
     runtime_tmpdir=None,
     strip=False,
@@ -158,7 +169,7 @@ coll = COLLECT(
     a.zipfiles,
     a.datas,
     strip=False,
-    upx=True,
+    upx=_use_upx,
     upx_exclude=[],
     name="C_HUD_Install",
 )
