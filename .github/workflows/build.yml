@@ -6,33 +6,18 @@ on:
       - 'v*'
   workflow_dispatch:
 
-# Explicit write permissions so release creation + asset upload works
 permissions:
   contents: write
   actions: read
 
-# ============================================================================
-#  NOTE ON WASM BUILD IN CI:
-#  The MSFS SDK (required for WASM compilation) is proprietary and cannot be
-#  freely downloaded in CI. The build-wasm job below attempts to use a cached
-#  SDK; if unavailable, it falls back to expecting a pre-built wasm artifact
-#  (uploaded manually or via a separate release pipeline).
-#
-#  Workflow for maintainers:
-#    1. Build WASM locally:  ./build_wasm.sh --sdk-path /path/to/MSFS_SDK
-#    2. Attach C_HUD_Runway.wasm to the GitHub release as a separate asset.
-#    3. The installer build job will pick it up from panel/ if present.
-# ============================================================================
-
 jobs:
   # --------------------------------------------------------------------------
-  #  Job 1: WASM build  (requires MSFS SDK)
+  #  Job 1: WASM build (Ubuntu — requires MSFS SDK in cache)
   # --------------------------------------------------------------------------
   build-wasm:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Restore cached MSFS SDK
         id: cache-sdk
@@ -47,10 +32,8 @@ jobs:
         run: |
           if [ -d "/tmp/MSFS_SDK/WASM/include" ] && [ -f "/tmp/MSFS_SDK/WASM/include/MSFS/MSFS.h" ]; then
             echo "SDK_FOUND=true" >> "$GITHUB_OUTPUT"
-            echo "MSFS SDK found in cache."
           else
             echo "SDK_FOUND=false" >> "$GITHUB_OUTPUT"
-            echo "MSFS SDK NOT found. See note above about manual WASM builds."
           fi
 
       - name: Build WASM (with SDK)
@@ -62,16 +45,14 @@ jobs:
         env:
           CLANG: clang++-17
 
-      - name: Verify WASM output or create placeholder
+      - name: Verify WASM output
         id: wasm-result
         shell: bash
         run: |
           if [ -f "panel/C_HUD_Runway.wasm" ]; then
             echo "WASM_BUILT=true" >> "$GITHUB_OUTPUT"
-            echo "WASM size: $(stat -c%s panel/C_HUD_Runway.wasm) bytes"
           else
             echo "WASM_BUILT=false" >> "$GITHUB_OUTPUT"
-            echo "::warning title=WASM not built::MSFS SDK not available. A pre-built C_HUD_Runway.wasm must be attached to the release manually."
             mkdir -p panel
             touch panel/C_HUD_Runway.wasm
           fi
@@ -85,30 +66,29 @@ jobs:
           if-no-files-found: warn
 
   # --------------------------------------------------------------------------
-  #  Job 2: Build installer EXE  (Windows)
+  #  Job 2: Build installer EXE on Windows + Create GitHub Release
   # --------------------------------------------------------------------------
   build-installer:
     runs-on: windows-latest
     needs: build-wasm
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Download WASM artifact from build-wasm
+      - name: Download WASM
         uses: actions/download-artifact@v4
         with:
           name: C_HUD_Runway-wasm
           path: panel/
 
-      - name: Check WASM presence
+      - name: Check WASM
         shell: pwsh
         run: |
           if (Test-Path "panel/C_HUD_Runway.wasm") {
             $size = (Get-Item "panel/C_HUD_Runway.wasm").Length
-            Write-Host "WASM found: $size bytes"
+            Write-Host "WASM OK: $size bytes"
           } else {
-            Write-Host "::warning::C_HUD_Runway.wasm not found in panel/."
+            Write-Host "::warning::WASM not found"
           }
 
       - name: Set up Python
@@ -116,105 +96,76 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install build dependencies
+      - name: Install deps
         run: pip install -r requirements-build.txt
 
-      - name: Verify PyInstaller installation
-        shell: pwsh
-        run: |
-          python --version
-          pip list | Select-String -Pattern "pyinstaller|customtkinter"
-          python -c "import PyInstaller; print('PyInstaller OK:', PyInstaller.__version__)"
-          python -c "import customtkinter; print('customtkinter OK:', customtkinter.__version__)"
-
       - name: Build EXE with PyInstaller
-        id: build-exe
-        shell: pwsh
-        continue-on-error: true
-        run: |
-          python -m PyInstaller C_HUD_Install.spec --log-level DEBUG 2>&1
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "::warning::PyInstaller build exited with code $LASTEXITCODE"
-            Write-Host "INSTALLER_BUILT=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          } else {
-            Write-Host "INSTALLER_BUILT=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          }
-
-      - name: Prepare release assets
         shell: pwsh
         run: |
-          $version = if ("${{ github.ref_name }}" -match '^v') { "${{ github.ref_name }}" } else { "dev" }
-          # Always include the WASM
-          $assets = @("panel/C_HUD_Runway.wasm")
+          python -m PyInstaller C_HUD_Install.spec 2>&1
 
-          # Include the installer EXE if it was built
+      - name: Stage release assets
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path release-assets
+          # Always include WASM
+          Copy-Item "panel/C_HUD_Runway.wasm" "release-assets/"
+          Write-Host "Staged WASM: C_HUD_Runway.wasm"
+
+          # Include installer EXE if available
           if (Test-Path "dist/C_HUD_Install.exe") {
-            $versionedName = "C_HUD_Install_$version.exe"
-            Copy-Item "dist/C_HUD_Install.exe" "dist/$versionedName"
-            Write-Host "Installer EXE ready: $versionedName"
-            Write-Host "ASSET_INSTALLER=dist/$versionedName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-            Write-Host "ASSET_INSTALLER_LATEST=dist/C_HUD_Install.exe" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+            $version = "${{ github.ref_name }}"
+            Copy-Item "dist/C_HUD_Install.exe" "release-assets/C_HUD_Install.exe"
+            Copy-Item "dist/C_HUD_Install.exe" "release-assets/C_HUD_Install_$version.exe"
+            Write-Host "Staged EXEs: C_HUD_Install.exe, C_HUD_Install_$version.exe"
           } else {
-            Write-Host "WARNING: Installer EXE not produced. Only WASM will be uploaded."
+            Write-Host "::warning::dist/C_HUD_Install.exe not found — only WASM will be released"
           }
 
-      - name: Upload GitHub Release
-        uses: softprops/action-gh-release@v2
-        if: always() && startsWith(github.ref, 'refs/tags/')
-        with:
-          tag_name: ${{ github.ref_name }}
-          files: |
-            panel/C_HUD_Runway.wasm
-            dist/C_HUD_Install*.exe
-          fail_on_unmatched_files: false
-          name: C_HUD_Runway ${{ github.ref_name }}
-          body: |
+          # Verify
+          Get-ChildItem "release-assets/" | Select-Object Name, Length
+
+      - name: Create Release & Upload Assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="${{ github.ref_name }}"
+          REPO="${{ github.repository }}"
+          echo "Releasing ${VERSION} to ${REPO}..."
+
+          # Check if release already exists
+          if gh release view "${VERSION}" --repo "${REPO}" &>/dev/null; then
+            echo "Release ${VERSION} already exists — uploading assets..."
+            gh release upload "${VERSION}" release-assets/* --repo "${REPO}" --clobber 2>&1
+          else
+            echo "Creating new release ${VERSION}..."
+            gh release create "${VERSION}" \
+              --repo "${REPO}" \
+              --title "C_HUD_Runway ${VERSION}" \
+              --notes-file - <<'EONOTES'
             ## C_HUD_Runway ${{ github.ref_name }}
 
             Conformal Boeing HGS-style HUD for Microsoft Flight Simulator 2020 and 2024.
 
             ### ⬇️ Downloads
-            - **`C_HUD_Runway.wasm`** — WASM gauge module (for manual installation)
-            - **`C_HUD_Install_${{ github.ref_name }}.exe`** — Windows installer (versioned)
-            - **`C_HUD_Install.exe`** — Windows installer (latest, unversioned)
-
-            ### 🚀 Installation
-            1. Download **`C_HUD_Install.exe`** (or the versioned asset) from the assets below
-            2. Double-click to run — MSFS Community folder is detected automatically
-            3. Click **설치하기**
-            4. Launch MSFS and fly
-
-            > Backups are created automatically before making any changes.
+            - **C_HUD_Install.exe** — Windows installer (latest)
+            - **C_HUD_Install_${{ github.ref_name }}.exe** — Windows installer (versioned)
+            - **C_HUD_Runway.wasm** — WASM gauge module (for manual installs)
 
             ### ✈️ Supported Aircraft
-            | Aircraft | HUD Style |
-            |---|---|
-            | PMDG 737-800 / 737-700 / MAX | Boeing HGS |
-            | PMDG 777-300ER | Boeing HGS |
-            | Asobo / WT Boeing 787-10 | Boeing HGS |
-            | iniBuilds A350 | Airbus HUD |
-            | FBW A32NX | Airbus HUD |
-            | FBW A380 (experimental) | Airbus HUD |
-            | Headwind A330-900neo | Airbus HUD |
-            | INI A330 | Airbus HUD |
-            | Fenix A320 | Airbus HUD |
+            PMDG 737-800/700/MAX | PMDG 777-300ER | Asobo/WT 787-10
+            iniBuilds A350 | FBW A32NX | FBW A380 | Fenix A320
+            Headwind A330-900 | INI A330
+EONOTES
+            gh release upload "${VERSION}" release-assets/* --repo "${REPO}" 2>&1
+          fi
 
-            ### 📋 Requirements
-            - Microsoft Flight Simulator 2020 or 2024
-            - Windows 10 / 11 (64-bit)
-
-            ---
-            🌐 [Project Website](https://leekangmmin.github.io/20260529) · [README](https://github.com/leekangmmin/20260529#readme)
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload installer artifact (if built)
+      - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: C_HUD_Install-${{ github.ref_name }}
-          path: dist/C_HUD_Install*.exe
+          path: release-assets/
           retention-days: 30
-          if-no-files-found: warn
