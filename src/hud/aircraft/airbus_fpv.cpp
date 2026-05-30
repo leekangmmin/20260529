@@ -282,8 +282,8 @@ void airbus_fpv_reset(AirbusFPVFilter* f) {
     adaptive_ema_reset(&f->ema_x);
     adaptive_ema_reset(&f->ema_y);
 
-    f->raw_input        = proj_vec3_make(0, 0, 0);
-    f->filtered_output  = proj_vec3_make(0, 0, 0);
-    f->predicted_output = proj_vec3_make(0, 0, 0);
+    f->raw_input        = proj_vec2_make(0, 0);
+    f->filtered_output  = proj_vec2_make(0, 0);
+    f->predicted_output = proj_vec2_make(0, 0);
     f->initialised      = true;  // Reset leaves it ready for use
 }

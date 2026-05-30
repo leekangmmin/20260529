@@ -92,8 +92,8 @@ static inline void pos_stab_init(PosStabiliser* ps,
     if (ps == 0) return;
     adaptive_ema_init(&ps->fx, alpha_min, alpha_max, rate_threshold);
     adaptive_ema_init(&ps->fy, alpha_min, alpha_max, rate_threshold);
-    ps->smoothed    = proj_vec3_make(0, 0, 0);
-    ps->velocity    = proj_vec3_make(0, 0, 0);
+    ps->smoothed    = proj_vec2_make(0, 0);
+    ps->velocity    = proj_vec2_make(0, 0);
     ps->initialised = false;
 }
 
@@ -105,8 +105,8 @@ static inline void pos_stab_reset(PosStabiliser* ps) {
     if (ps == 0) return;
     adaptive_ema_reset(&ps->fx);
     adaptive_ema_reset(&ps->fy);
-    ps->smoothed = proj_vec3_make(0, 0, 0);
-    ps->velocity = proj_vec3_make(0, 0, 0);
+    ps->smoothed = proj_vec2_make(0, 0);
+    ps->velocity = proj_vec2_make(0, 0);
     ps->initialised = false;
 }
 

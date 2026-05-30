@@ -81,18 +81,18 @@ typedef struct DepthIllusionState {
 static inline void depth_illusion_init(DepthIllusionState* di) {
     if (di == 0) return;
     for (int i = 0; i < 4; ++i) {
-        di->parallax_offset[i] = proj_vec3_make(0, 0, 0);
+        di->parallax_offset[i] = proj_vec2_make(0, 0);
         di->focal_blur[i] = 0.0;
         di->focal_sharpness[i] = 1.0;
     }
-    di->head_motion_shift = proj_vec3_make(0, 0, 0);
+    di->head_motion_shift = proj_vec2_make(0, 0);
     di->head_motion_gain = 0.02;
-    di->optical_wobble = proj_vec3_make(0, 0, 0);
+    di->optical_wobble = proj_vec2_make(0, 0);
     di->wobble_frequency = 8.0;
     di->wobble_amplitude = 0.3;
-    di->stabilisation_offset = proj_vec3_make(0, 0, 0);
+    di->stabilisation_offset = proj_vec2_make(0, 0);
     di->depth_intensity = 0.5;
-    di->infinity_layer_offset = proj_vec3_make(0, 0, 0);
+    di->infinity_layer_offset = proj_vec2_make(0, 0);
     di->active = false;
     di->valid = false;
 }

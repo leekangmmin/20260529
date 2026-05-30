@@ -11,9 +11,11 @@
 
 #include "module.h"
 
-// Static token table — one GAUGE_VAR per LVarID.
+// Token table — one GAUGE_VAR per LVarID.
+// External linkage: module.h's lvar_read/lvar_write declare this as
+// `extern GAUGE_VAR g_lvar_tokens[LVAR_COUNT]`, so the definition must match.
 // Initialised to 0 (invalid token) by virtue of BSS zero-init.
-static GAUGE_VAR g_lvar_tokens[LVAR_COUNT];
+GAUGE_VAR g_lvar_tokens[LVAR_COUNT];
 
 // L:var name table — maps LVarID → name string for token resolution.
 static const char* const g_lvar_names[LVAR_COUNT] = {

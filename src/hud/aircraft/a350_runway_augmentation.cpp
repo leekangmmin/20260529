@@ -81,8 +81,8 @@ void a350_runway_augmentation_compute(
 
         // Stability assessment
         {
-            const FLOAT64 threshold_delta = proj_vec3_dist(ra->threshold_smoothed, threshold);
-            const FLOAT64 centerline_delta = proj_vec3_dist(ra->centerline_smoothed, centerline);
+            const FLOAT64 threshold_delta = proj_vec2_dist(ra->threshold_smoothed, threshold);
+            const FLOAT64 centerline_delta = proj_vec2_dist(ra->centerline_smoothed, centerline);
 
             ra->threshold_stability = 1.0 - proj_fmin(threshold_delta / 10.0, 1.0);
             ra->centerline_stability = 1.0 - proj_fmin(centerline_delta / 10.0, 1.0);

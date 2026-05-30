@@ -162,8 +162,8 @@ class WatchdogSystem:
         lines = ["=== WATCHDOG SYSTEM REPORT ==="]
         lines.append(f"  System degraded: {self.system_degraded}")
         lines.append(f"  Emergency mode: {self.emergency_mode}")
-        lines.append(f"  Total failures: {sum(s.total_failures
-                     for s in self.subsystems.values())}")
+        total_failures = sum(s.total_failures for s in self.subsystems.values())
+        lines.append(f"  Total failures: {total_failures}")
         for name, sub in sorted(self.subsystems.items()):
             status = "OK" if sub.healthy else "FAIL"
             lines.append(f"  [{status}] {name}: "

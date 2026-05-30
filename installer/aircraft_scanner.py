@@ -45,6 +45,8 @@ class AircraftType(Enum):
     WT_787_10 = "WT 787-10"
     INIBUILDS_A350 = "iniBuilds A350"
     FBW_A32NX = "FBW A32NX"
+    FBW_A380 = "FBW A380"
+    FENIX_A320 = "FENIX A320"
     HEADWIND_A330_900 = "HEADWIND A330-900"
 
     @classmethod
@@ -58,6 +60,8 @@ class AircraftType(Enum):
             "WT 787-10": cls.WT_787_10,
             "INIBUILDS A350": cls.INIBUILDS_A350,
             "FBW A32NX": cls.FBW_A32NX,
+            "FBW A380": cls.FBW_A380,
+            "FENIX A320": cls.FENIX_A320,
             "HEADWIND A330-900": cls.HEADWIND_A330_900,
         }
         upper = prefix.upper().strip()
@@ -117,6 +121,8 @@ class AircraftPackage:
     hgs_integrated: bool = False     # Whether HGS panel entries exist
     integration_status: IntegrationStatus = IntegrationStatus.NOT_INSTALLED
     is_modified: bool = False        # Detected as modified from original
+    is_official: bool = False        # Located in Official (OneStore) folder — not Community
+    is_official_backed_up: bool = False  # Backed up before patching (mandatory for official)
     errors: List[str] = field(default_factory=list)
 
     @property
@@ -130,13 +136,24 @@ class AircraftPackage:
 # =========================================================================
 
 # Patterns used to identify aircraft packages in the Community folder
+# NOTE: matching is performed against the *Community folder name*, which for
+# most real packages uses ICAO/vendor codes rather than the marketing name:
+#   PMDG 737-800  ->  pmdg-aircraft-738       PMDG 777-300ER -> pmdg-aircraft-77w
+#   FBW A32NX     ->  flybywire-aircraft-a320-neo (note: "a320", NOT "a32nx")
+#   FBW A380      ->  flybywire-aircraft-a380-842
+#   Fenix A320    ->  fenix-a320 / fnx-320-airbus
+#   iniBuilds A350->  inibuilds-aircraft-a350 Headwind A330 -> headwindsim-aircraft-a330-900
+# Order matters: most specific patterns first.
 AIRCRAFT_PACKAGE_PATTERNS = [
-    # PMDG 737
-    (re.compile(r'pmdg.*737.*800', re.IGNORECASE), AircraftType.PMDG_737_800),
-    (re.compile(r'pmdg.*737.*700', re.IGNORECASE), AircraftType.PMDG_737_700),
+    # PMDG 737  (738 = -800, 737/736 = -700, ICAO codes in folder names)
+    (re.compile(r'pmdg.*73[78].*800', re.IGNORECASE), AircraftType.PMDG_737_800),
+    (re.compile(r'pmdg.*73[67].*700', re.IGNORECASE), AircraftType.PMDG_737_700),
+    (re.compile(r'pmdg.*738', re.IGNORECASE), AircraftType.PMDG_737_800),
+    (re.compile(r'pmdg.*736', re.IGNORECASE), AircraftType.PMDG_737_700),
     (re.compile(r'pmdg.*737', re.IGNORECASE), AircraftType.PMDG_737_800),  # fallback
-    # PMDG 777
+    # PMDG 777  (77w = 777-300ER)
     (re.compile(r'pmdg.*777.*300', re.IGNORECASE), AircraftType.PMDG_777_300ER),
+    (re.compile(r'pmdg.*77w', re.IGNORECASE), AircraftType.PMDG_777_300ER),
     (re.compile(r'pmdg.*777', re.IGNORECASE), AircraftType.PMDG_777_300ER),  # fallback
     # Boeing 787
     (re.compile(r'asobo.*787', re.IGNORECASE), AircraftType.ASOBO_787_10),
@@ -145,10 +162,17 @@ AIRCRAFT_PACKAGE_PATTERNS = [
     # iniBuilds A350
     (re.compile(r'inibuilds.*a350', re.IGNORECASE), AircraftType.INIBUILDS_A350),
     (re.compile(r'a350', re.IGNORECASE), AircraftType.INIBUILDS_A350),
-    # FBW A32NX
-    (re.compile(r'fbw.*a32nx', re.IGNORECASE), AircraftType.FBW_A32NX),
-    (re.compile(r'flybywire.*a32nx', re.IGNORECASE), AircraftType.FBW_A32NX),
+    # FBW A380  (must come before generic a380/a32nx so A380 wins)
+    (re.compile(r'flybywire.*a380', re.IGNORECASE), AircraftType.FBW_A380),
+    (re.compile(r'fbw.*a380', re.IGNORECASE), AircraftType.FBW_A380),
+    (re.compile(r'a380', re.IGNORECASE), AircraftType.FBW_A380),
+    # FBW A32NX  (real folder is "flybywire-aircraft-a320-neo": matches a320, not a32nx)
+    (re.compile(r'flybywire.*a32(0|nx)', re.IGNORECASE), AircraftType.FBW_A32NX),
+    (re.compile(r'fbw.*a32(0|nx)', re.IGNORECASE), AircraftType.FBW_A32NX),
     (re.compile(r'a32nx', re.IGNORECASE), AircraftType.FBW_A32NX),
+    # Fenix A320  (fenix-a320 / fnx-320-airbus)
+    (re.compile(r'fenix.*a?320', re.IGNORECASE), AircraftType.FENIX_A320),
+    (re.compile(r'fnx.*320', re.IGNORECASE), AircraftType.FENIX_A320),
     # Headwind A330
     (re.compile(r'headwind.*a330', re.IGNORECASE), AircraftType.HEADWIND_A330_900),
     (re.compile(r'a330.*900', re.IGNORECASE), AircraftType.HEADWIND_A330_900),
@@ -162,7 +186,9 @@ AIRCRAFT_SIMOBJECT_PATHS = {
     AircraftType.ASOBO_787_10: ["SimObjects/Airplanes/Asobo_787_10", "SimObjects/Airplanes/ASOBO_787_10"],
     AircraftType.WT_787_10: ["SimObjects/Airplanes/WT_787_10"],
     AircraftType.INIBUILDS_A350: ["SimObjects/Airplanes/iniBuilds_A350"],
-    AircraftType.FBW_A32NX: ["SimObjects/Airplanes/FBW_A32NX"],
+    AircraftType.FBW_A32NX: ["SimObjects/Airplanes/FlyByWire_A320_NEO", "SimObjects/Airplanes/FBW_A32NX"],
+    AircraftType.FBW_A380: ["SimObjects/Airplanes/FlyByWire_A380_842", "SimObjects/Airplanes/FBW_A380"],
+    AircraftType.FENIX_A320: ["SimObjects/Airplanes/FNX-320-AIRBUS", "SimObjects/Airplanes/Fenix_A320"],
     AircraftType.HEADWIND_A330_900: ["SimObjects/Airplanes/Headwind_A330_900"],
 }
 
@@ -200,12 +226,21 @@ def scan_community(community_path: Path) -> List[AircraftPackage]:
         return []
 
     for entry in entries:
-        if not entry.is_dir():
+        # A single inaccessible/read-only entry must not abort the whole scan.
+        try:
+            if not entry.is_dir():
+                continue
+        except (PermissionError, OSError) as e:
+            logger.warning(f"Skipping inaccessible entry {entry}: {e}")
             continue
         if entry.name.startswith("."):
             continue
 
-        pkg = _scan_single_package(entry)
+        try:
+            pkg = _scan_single_package(entry)
+        except (PermissionError, OSError) as e:
+            logger.warning(f"Skipping unreadable package {entry}: {e}")
+            continue
         if pkg is not None:
             # Deduplicate by package path
             key = str(pkg.package_path.resolve())
@@ -218,6 +253,109 @@ def scan_community(community_path: Path) -> List[AircraftPackage]:
 
     logger.info(f"Scan complete. Found {len(packages)} supported aircraft package(s).")
     return packages
+
+
+def scan_official(official_path: Path) -> List[AircraftPackage]:
+    """
+    Scan the MSFS Official (OneStore) folder for supported aircraft packages.
+
+    Official packages (e.g. asobo-aircraft-787-10 from the base sim) live under
+    Official/OneStore/... or Official/Steam/... rather than Community/.
+    Patching these carries extra risk because they are base-sim files — the
+    function tags each detected package with ``is_official=True`` and issues
+    a warning.
+
+    The scanner reuses the same ``_scan_single_package()`` logic used by
+    ``scan_community()`` — only the root path differs.
+
+    Args:
+        official_path: Path to the MSFS Official folder (e.g.
+                       ``Official/OneStore`` or ``Official/Steam``).
+
+    Returns:
+        List of detected AircraftPackage objects flagged as official.
+    """
+    if not official_path.exists():
+        logger.warning(f"Official folder does not exist: {official_path}")
+        return []
+
+    logger.info(f"Scanning Official folder: {official_path}")
+    packages: List[AircraftPackage] = []
+    seen_packages: Set[str] = set()
+
+    # Official packages are organised under sub-directories (OneStore, Steam, etc.)
+    # Each sub-directory contains publisher/aircraft folders.
+    try:
+        entries = sorted(official_path.iterdir())
+    except PermissionError as e:
+        logger.error(f"Permission denied scanning {official_path}: {e}")
+        return []
+
+    for entry in entries:
+        try:
+            if not entry.is_dir():
+                continue
+        except (PermissionError, OSError) as e:
+            logger.warning(f"Skipping inaccessible entry {entry}: {e}")
+            continue
+        if entry.name.startswith("."):
+            continue
+
+        # Official store may have nested publisher directories (e.g. "asobo/aircraft-787-10")
+        # or flat aircraft folder names.  Try both.
+        try:
+            sub_entries = sorted(entry.iterdir())
+        except (PermissionError, OSError):
+            # Try this entry itself as a package directory
+            pkg = _scan_single_package(entry)
+            if pkg is not None:
+                pkg.is_official = True
+                key = str(pkg.package_path.resolve())
+                if key not in seen_packages:
+                    seen_packages.add(key)
+                    packages.append(pkg)
+                    logger.info(f"  Detected (official): {pkg.aircraft_type.value} @ {entry.name}")
+            continue
+
+        # Check if sub-entries are aircraft packages
+        found_any = False
+        for sub in sub_entries:
+            try:
+                if not sub.is_dir() or sub.name.startswith("."):
+                    continue
+            except (PermissionError, OSError):
+                continue
+
+            pkg = _scan_single_package(sub)
+            if pkg is not None:
+                pkg.is_official = True
+                key = str(pkg.package_path.resolve())
+                if key not in seen_packages:
+                    seen_packages.add(key)
+                    packages.append(pkg)
+                    logger.info(f"  Detected (official): {pkg.aircraft_type.value} @ {sub.name}")
+                    found_any = True
+
+        # If no sub-directory matched, try the entry directory itself
+        if not found_any:
+            pkg = _scan_single_package(entry)
+            if pkg is not None:
+                pkg.is_official = True
+                key = str(pkg.package_path.resolve())
+                if key not in seen_packages:
+                    seen_packages.add(key)
+                    packages.append(pkg)
+                    logger.info(f"  Detected (official): {pkg.aircraft_type.value} @ {entry.name}")
+
+    if packages:
+        logger.warning(
+            f"Found {len(packages)} official aircraft package(s) — "
+            "patching base-sim files is risky. Backups are REQUIRED."
+        )
+
+    logger.info(f"Official scan complete. Found {len(packages)} supported aircraft package(s).")
+    return packages
+
 
 
 def _scan_single_package(package_dir: Path) -> Optional[AircraftPackage]:

@@ -420,6 +420,7 @@ bool module_update_project(const sGaugeDrawData* dd) {
 
     // Detect sim pause/unpause by monitoring frame delta
     // A dt_frames > 5 frames (at 60 fps) indicates a pause or heavy stall.
+    FLOAT64 dt_s = 1.0 / 60.0;   // default for first frame / post-pause resume
     if (!g_hud.timing_init) {
         g_hud.timing_init = true;
         g_hud.prev_timestamp = (FLOAT64)g_state.frame_counter;

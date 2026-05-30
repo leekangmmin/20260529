@@ -73,7 +73,7 @@ void depth_illusion_compute(DepthIllusionState* di,
     //  parallax effect of real collimated optics.
     // ================================================================
     {
-        Vec2 head_delta = proj_vec3_make(0, 0, 0);
+        Vec2 head_delta = proj_vec2_make(0, 0);
         if (cc != 0 && cc->active) {
             // Use collimation correction as a proxy for head movement
             head_delta.x = cc->debug_camera_delta_x * 100.0;  // convert to px

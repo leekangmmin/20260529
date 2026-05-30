@@ -101,9 +101,9 @@ static inline void airbus_fpv_init(AirbusFPVFilter* f) {
     adaptive_ema_init(&f->ema_x, f->damping_min, f->damping_max, 8.0);
     adaptive_ema_init(&f->ema_y, f->damping_min, f->damping_max, 8.0);
 
-    f->raw_input        = proj_vec3_make(0, 0, 0);
-    f->filtered_output  = proj_vec3_make(0, 0, 0);
-    f->predicted_output = proj_vec3_make(0, 0, 0);
+    f->raw_input        = proj_vec2_make(0, 0);
+    f->filtered_output  = proj_vec2_make(0, 0);
+    f->predicted_output = proj_vec2_make(0, 0);
     f->initialised      = true;
 }
 
@@ -148,13 +148,13 @@ Vec2 airbus_fpv_feed(AirbusFPVFilter* f, Vec2 raw, FLOAT64 dt_s);
 
 /// Get the current filtered (non-predicted) FPV position.
 static inline Vec2 airbus_fpv_get_filtered(const AirbusFPVFilter* f) {
-    if (f == 0) return proj_vec3_make(-9999, -9999, 0);
+    if (f == 0) return proj_vec2_make(-9999, -9999);
     return f->filtered_output;
 }
 
 /// Get the predicted FPV position (filtered + prediction).
 static inline Vec2 airbus_fpv_get_predicted(const AirbusFPVFilter* f) {
-    if (f == 0) return proj_vec3_make(-9999, -9999, 0);
+    if (f == 0) return proj_vec2_make(-9999, -9999);
     return f->predicted_output;
 }
 

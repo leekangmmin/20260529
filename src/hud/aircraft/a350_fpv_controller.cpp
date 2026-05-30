@@ -178,7 +178,7 @@ static void controller_predictive_align(
 
         pa->valid = true;
     } else {
-        pa->crosswind_compensation = proj_vec3_make(0, 0, 0);
+        pa->crosswind_compensation = proj_vec2_make(0, 0);
         pa->alignment_angle_deg = 0.0;
         pa->alignment_quality = 0.0;
         pa->valid = false;

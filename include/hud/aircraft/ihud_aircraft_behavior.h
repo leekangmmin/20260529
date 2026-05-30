@@ -24,6 +24,9 @@
 //  allocated singletons, not heap-allocated objects.
 // ============================================================================
 
+#ifndef C_HUD_IHUD_AIRCRAFT_BEHAVIOR_H
+#define C_HUD_IHUD_AIRCRAFT_BEHAVIOR_H
+
 #include "../../module.h"
 #include "../../projection.h"
 #include "../flare.h"        // FlareState, FlareCue, TouchdownZone

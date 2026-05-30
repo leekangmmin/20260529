@@ -41,7 +41,6 @@ typedef struct A350RunwayAugmentation {
 
     // --- Edge light stabilization ---
     FLOAT64 edge_light_stability;       // 0..1 edge light stability
-    FLOAT64 edge_light_smooth_alpha;    // smoothing for edge lights
     FLOAT64 left_edge_offset_px;        // left edge screen offset (pixels)
     FLOAT64 right_edge_offset_px;       // right edge screen offset (pixels)
 
@@ -69,18 +68,17 @@ typedef struct A350RunwayAugmentation {
 static inline void a350_runway_augmentation_init(A350RunwayAugmentation* ra) {
     if (ra == 0) return;
 
-    ra->threshold_smoothed       = proj_vec3_make(0, 0, 0);
-    ra->threshold_raw            = proj_vec3_make(0, 0, 0);
+    ra->threshold_smoothed       = proj_vec2_make(0, 0);
+    ra->threshold_raw            = proj_vec2_make(0, 0);
     ra->threshold_stability      = 1.0;
     ra->threshold_alpha          = 0.20;
 
-    ra->centerline_smoothed       = proj_vec3_make(0, 0, 0);
-    ra->centerline_raw            = proj_vec3_make(0, 0, 0);
+    ra->centerline_smoothed       = proj_vec2_make(0, 0);
+    ra->centerline_raw            = proj_vec2_make(0, 0);
     ra->centerline_stability      = 1.0;
     ra->centerline_alpha          = 0.15;
 
     ra->edge_light_stability      = 1.0;
-    ra->edge_light_smooth_alpha   = 0.25;
     ra->left_edge_offset_px       = 0.0;
     ra->right_edge_offset_px      = 0.0;
 

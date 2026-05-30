@@ -26,7 +26,7 @@
 
 #include "../module.h"
 #include "../projection.h"
-#include "../aircraft_profiles.h"
+#include "aircraft_profiles.h"
 #include "flare.h"
 #include "fpv.h"
 #include "rollout.h"

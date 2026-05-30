@@ -229,7 +229,7 @@ void td_predictor_compute(TDPredictor*    td,
 
     // Project to HUD
     bool behind = false;
-    Vec2 screen = proj_vec3_zero();
+    Vec2 screen = proj_vec2_zero();
     proj_world_to_hud(td_world, ac_ref, b2w, eye_offset,
                        focal_px, screen_w, screen_h,
                        &screen, &behind);

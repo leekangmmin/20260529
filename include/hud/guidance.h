@@ -17,6 +17,7 @@
 
 #include "../module.h"
 #include "../projection.h"
+#include "runway_projection.h"   // RunwayEnd
 
 // ============================================================================
 //  1.  ILS beam geometry

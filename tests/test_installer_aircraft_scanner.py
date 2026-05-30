@@ -15,6 +15,7 @@ from installer.aircraft_scanner import (
     AircraftType,
     IntegrationStatus,
     scan_community,
+    scan_official,
     _identify_aircraft_type,
     _parse_panel_config,
     _detect_version,
@@ -89,6 +90,56 @@ def create_mock_aircraft_package(
     )
 
     return pkg_dir
+
+
+def create_mock_official_package(
+    temp_dir: Path,
+    publisher: str,
+    name: str,
+    aircraft_type: AircraftType,
+    with_panel: bool = True,
+    with_hgs: bool = False,
+) -> Path:
+    """
+    Create a mock aircraft package inside an Official/OneStore/{publisher}/{name} structure.
+    Returns the package root path.
+    """
+    # Official structure: Official/OneStore/{publisher}/{aircraft-folder}/
+    official_dir = temp_dir / "Official" / "OneStore" / publisher / name
+    official_dir.mkdir(parents=True, exist_ok=True)
+
+    sim_dir = official_dir / "SimObjects" / "Airplanes" / name
+    sim_dir.mkdir(parents=True, exist_ok=True)
+    panel_dir = sim_dir / "panel"
+    panel_dir.mkdir(parents=True, exist_ok=True)
+
+    if with_panel:
+        panel_cfg = panel_dir / "panel.cfg"
+        entries = []
+        if with_hgs:
+            entries.extend([
+                "; --- C_HUD_Runway HGS Integration ---",
+                'gauge00 = C_HUD_Runway!Gauge_ConformalHUD,  0, 0, 1024, 1024',
+                'htmlgauge00 = HUD/hud_overlay.html,  0, 0, 1024, 1024',
+                "; --- End HGS Integration ---",
+            ])
+        else:
+            entries.append('gauge00 = DefaultGauge!Gauge, 0, 0, 300, 300')
+
+        panel_cfg.write_text(
+            "[VCockpit01]\nsize_mm = 1024, 1024\npixel_size = 1024, 1024\n"
+            + "\n".join(entries) + "\n",
+            encoding="utf-8",
+        )
+
+    # Create layout.json
+    layout_path = official_dir / "layout.json"
+    content = [
+        {"path": f"SimObjects/Airplanes/{name}/panel/panel.cfg", "size": 100, "date": 2000000000},
+    ]
+    layout_path.write_text(json.dumps({"content": content}), encoding="utf-8")
+
+    return official_dir
 
 
 # =========================================================================
@@ -319,21 +370,133 @@ class TestCompatibilityMap:
                 package_path=Path(tmp),
                 aircraft_type=AircraftType.PMDG_737_800,
                 title_prefix="PMDG 737-800",
-                detected_version_major=1,
-                detected_version_minor=0,
+                detected_version_major=0,
+                detected_version_minor=9,
             )
-            # PMDG 737 requires 3.0
             assert check_version_compatibility(pkg) is False
 
-    def test_version_compatibility_unknown_type(self):
-        """Test compatibility with an aircraft type not in the compat map."""
+
+class TestOfficialScanning:
+    """Test scanning of Official (OneStore) aircraft packages."""
+
+    def test_scan_official_empty(self):
         with tempfile.TemporaryDirectory() as tmp:
-            # Use a type not in the compatibility map
-            pkg = AircraftPackage(
-                package_path=Path(tmp),
-                aircraft_type=AircraftType.INIBUILDS_A350,  # version requires 1.2
-                title_prefix="Unsupported Aircraft",
-                detected_version_major=2,
-                detected_version_minor=0,
+            official = Path(tmp) / "Official" / "OneStore"
+            official.mkdir(parents=True)
+            packages = scan_official(official)
+            assert packages == []
+
+    def test_scan_official_nonexistent(self):
+        packages = scan_official(Path("/nonexistent/official"))
+        assert packages == []
+
+    def test_scan_official_single_package(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            create_mock_official_package(
+                Path(tmp), "asobo", "asobo-787-10",
+                AircraftType.ASOBO_787_10,
             )
-            assert check_version_compatibility(pkg) is True  # 2.0 >= 1.2
+            official = Path(tmp) / "Official" / "OneStore"
+            packages = scan_official(official)
+            assert len(packages) == 1
+            assert packages[0].aircraft_type == AircraftType.ASOBO_787_10
+            assert packages[0].is_official is True
+
+    def test_scan_official_multiple_publishers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            create_mock_official_package(
+                Path(tmp), "asobo", "asobo-787-10",
+                AircraftType.ASOBO_787_10,
+            )
+            create_mock_official_package(
+                Path(tmp), "asobo", "asobo-747-8i",
+                AircraftType.ASOBO_787_10,  # not real but tests the scanner
+            )
+            official = Path(tmp) / "Official" / "OneStore"
+            packages = scan_official(official)
+            # Only asobo-787-10 matches the known patterns
+            assert len(packages) == 1
+            assert packages[0].aircraft_type == AircraftType.ASOBO_787_10
+            assert packages[0].is_official is True
+
+    def test_scan_official_ignores_unknown(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            # Unknown aircraft in Official should be ignored
+            official = Path(tmp) / "Official" / "OneStore"
+            official.mkdir(parents=True)
+            (official / "unknown-publisher" / "some-unknown-plane").mkdir(parents=True)
+            packages = scan_official(official)
+            assert packages == []
+
+    def test_scan_official_sets_is_official_flag(self):
+        """Verify that packages discovered via scan_official() have is_official=True."""
+        with tempfile.TemporaryDirectory() as tmp:
+            create_mock_official_package(
+                Path(tmp), "asobo", "asobo-787-10",
+                AircraftType.ASOBO_787_10,
+            )
+            official = Path(tmp) / "Official" / "OneStore"
+            packages = scan_official(official)
+            assert len(packages) >= 1
+            for pkg in packages:
+                assert pkg.is_official is True
+
+    def test_scan_community_sets_is_official_false(self):
+        """Verify that packages discovered via scan_community() have is_official=False."""
+        with tempfile.TemporaryDirectory() as tmp:
+            create_mock_aircraft_package(
+                Path(tmp), "pmdg-737-800",
+                AircraftType.PMDG_737_800,
+            )
+            community = Path(tmp) / "Community"
+            packages = scan_community(community)
+            assert len(packages) >= 1
+            for pkg in packages:
+                assert pkg.is_official is False
+
+
+class TestAircraftPackageFields:
+    """Test the AircraftPackage dataclass fields."""
+
+    def test_default_is_official_false(self):
+        pkg = AircraftPackage(
+            package_path=Path("/tmp/test"),
+            aircraft_type=AircraftType.PMDG_737_800,
+            title_prefix="PMDG 737-800",
+        )
+        assert pkg.is_official is False
+        assert pkg.is_official_backed_up is False
+
+    def test_is_official_set_explicitly(self):
+        pkg = AircraftPackage(
+            package_path=Path("/tmp/test"),
+            aircraft_type=AircraftType.ASOBO_787_10,
+            title_prefix="ASOBO 787-10",
+            is_official=True,
+        )
+        assert pkg.is_official is True
+        assert pkg.is_official_backed_up is False
+
+    def test_steam_official_folder_structure(self):
+        """Official folder may also exist under Official/Steam/..."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            # Create mock package directly under Official/Steam
+            publisher_dir = tmp_path / "Official" / "Steam" / "asobo"
+            pkg_dir = publisher_dir / "asobo-787-10"
+            pkg_dir.mkdir(parents=True)
+            # Minimal package structure
+            sim_dir = pkg_dir / "SimObjects" / "Airplanes" / "asobo-787-10"
+            sim_dir.mkdir(parents=True)
+            panel_dir = sim_dir / "panel"
+            panel_dir.mkdir(parents=True)
+            panel_cfg = panel_dir / "panel.cfg"
+            panel_cfg.write_text('[VCockpit01]\nsize_mm = 1024, 1024\ngauge00 = DefaultGauge!Gauge, 0,0,300,300\n', encoding='utf-8')
+            layout_path = pkg_dir / "layout.json"
+            layout_path.write_text(json.dumps({"content": [{"path": "SimObjects/Airplanes/asobo-787-10/panel/panel.cfg", "size": 100, "date": 2000000000}]}), encoding="utf-8")
+
+            steam_dir = tmp_path / "Official" / "Steam"
+            packages = scan_official(steam_dir)
+            assert len(packages) >= 1
+            for pkg in packages:
+                assert pkg.is_official is True

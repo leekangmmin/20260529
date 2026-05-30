@@ -754,6 +754,13 @@ typedef struct ModuleState {
     GAUGE_VAR   tok_screen_cx;   // legacy L:C_HUD_ScreenCX
     GAUGE_VAR   tok_screen_cy;   // legacy L:C_HUD_ScreenCY
 
+    // --- Runway box vertex output L:vars (L:C_HUD_RunwayV0..7_X / _Y) ---
+    GAUGE_VAR   tok_runway_vx[8];
+    GAUGE_VAR   tok_runway_vy[8];
+
+    // --- Pitch ladder line output L:vars (L:C_HUD_PitchLadder_0..4_Y) ---
+    GAUGE_VAR   tok_pitch_line_y[5];
+
     // --- v2.0: FPV / guidance SimVar tokens ---
     GAUGE_VAR   tok_groundspeed;
     GAUGE_VAR   tok_true_airspeed;
@@ -933,14 +940,14 @@ static inline void histogram_record(SubsystemHistogram* h, FLOAT64 us, int frame
     if (us < h->min_us) h->min_us = us;
     if (us > h->max_us) h->max_us = us;
     h->total_frames_measured++;
-    int bin_idx = h->bin_count - 1;
-    for (int b = 0; b < h->bin_count - 1; ++b) {
+    int bin_idx = C_HUD_PERF_HIST_BINS - 1;
+    for (int b = 0; b < C_HUD_PERF_HIST_BINS - 1; ++b) {
         if (us >= h->bin_lower[b] && us < h->bin_upper[b]) {
             bin_idx = b;
             break;
         }
     }
-    if (bin_idx >= 0 && bin_idx < h->bin_count) {
+    if (bin_idx >= 0 && bin_idx < C_HUD_PERF_HIST_BINS) {
         h->bins[bin_idx]++;
     }
 }
@@ -954,7 +961,7 @@ static inline void percentile_compute(SubsystemHistogram* h) {
     h->p50_us = 0.0;
     h->p95_us = 0.0;
     h->p99_us = 0.0;
-    for (int b = 0; b < h->bin_count; ++b) {
+    for (int b = 0; b < C_HUD_PERF_HIST_BINS; ++b) {
         cumulative += h->bins[b];
         const FLOAT64 midpoint = (h->bin_lower[b] + h->bin_upper[b]) * 0.5;
         if (cumulative >= (int)(total * 0.50) && h->p50_us == 0.0)
@@ -964,9 +971,9 @@ static inline void percentile_compute(SubsystemHistogram* h) {
         if (cumulative >= (int)(total * 0.99) && h->p99_us == 0.0)
             h->p99_us = midpoint;
     }
-    if (h->p50_us == 0.0) h->p50_us = h->bin_upper[h->bin_count - 1];
-    if (h->p95_us == 0.0) h->p95_us = h->bin_upper[h->bin_count - 1];
-    if (h->p99_us == 0.0) h->p99_us = h->bin_upper[h->bin_count - 1];
+    if (h->p50_us == 0.0) h->p50_us = h->bin_upper[C_HUD_PERF_HIST_BINS - 1];
+    if (h->p95_us == 0.0) h->p95_us = h->bin_upper[C_HUD_PERF_HIST_BINS - 1];
+    if (h->p99_us == 0.0) h->p99_us = h->bin_upper[C_HUD_PERF_HIST_BINS - 1];
     h->last_percentile_update = h->total_frames_measured;
 }
 

@@ -150,6 +150,7 @@ typedef struct TDPredictor {
 
     // --- Computed ---
     FLOAT64 predicted_range_m;     // predicted distance to touchdown (m)
+    FLOAT64 time_to_touchdown_s;   // predicted time to touchdown (s)
     Vec2    screen_pos;            // predicted TD point on HUD
     FLOAT64 predictor_size_px;     // size of predictor symbol
     FLOAT64 confidence;            // prediction confidence (0..1)

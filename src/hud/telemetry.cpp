@@ -9,6 +9,7 @@
 // ============================================================================
 
 #include "hud/telemetry.h"
+#include "hud/stabilization.h"   // full HUDStabilisation definition (used at line ~299)
 #include <MSFS/MSFS.h>   // MSFS_Log
 
 // ============================================================================

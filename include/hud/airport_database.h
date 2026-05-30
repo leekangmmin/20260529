@@ -22,6 +22,8 @@
 // ============================================================================
 
 #include "../module.h"
+#include "../projection.h"        // proj_sqrt, PROJ_DEG2RAD
+#include "runway_projection.h"    // RunwayEnd
 
 // ============================================================================
 //  1.  Database limits

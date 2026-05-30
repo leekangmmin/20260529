@@ -16,7 +16,7 @@
 
 <br/>
 
-[![Download](https://img.shields.io/badge/⬇%20%20Download%20Installer-C_HUD_Install.exe-3182F6?style=for-the-badge&logoColor=white)](https://github.com/leekangmmin/20260529/releases/latest/download/C_HUD_Install.exe)
+[![Download](https://img.shields.io/badge/⬇%20%20Download%20Installer-3182F6?style=for-the-badge&logoColor=white)](https://github.com/leekangmmin/20260529/releases/latest)
 
 <br/>
 
@@ -256,11 +256,14 @@ graph TD
 
 The installer detects MSFS 2020 and 2024 via Windows Registry and `UserCfg.opt`. It creates a timestamped backup of every file it touches before making any changes.
 
-1. Download **C_HUD_Install.exe** from [Releases](https://github.com/leekangmmin/20260529/releases/latest)
-2. Run it — MSFS Community folder is detected automatically
-3. Click **설치하기**
-4. Launch MSFS and fly
+1. Go to the **[Releases](https://github.com/leekangmmin/20260529/releases/latest)** page
+2. Download **`C_HUD_Install.exe`** from the assets section
+3. Run it — MSFS Community folder is detected automatically
+4. Click **설치하기**
+5. Launch MSFS and fly
 
+> ⚠️ **Download tip:** The download badge at the top of this page links directly to the latest release assets. If the badge shows a 404, simply visit the [Releases](https://github.com/leekangmmin/20260529/releases) page and download the file manually.
+>
 > MSFS must be installed before running the installer.  
 > Backups are created automatically — one click restores if anything goes wrong.
 

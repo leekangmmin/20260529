@@ -558,7 +558,7 @@ static const HUDProfile profile_fenix_a320 = {
 
     // Airbus optical: calmer, less bloom, more persistence
     .optical_calmness           = 0.90,
-    .phosphor_persistence_ms    = 3.2,
+    .phosphor_persistence_ms    = 32.0,  // TODO(calibration): was 3.2 — suspected decimal typo
     .bloom_intensity            = 0.12,
     .edge_fade_factor           = 0.20,
 
@@ -618,7 +618,7 @@ static const HUDProfile profile_pmdg_737_max = {
 
     // Boeing optical: more bloom, sharper
     .optical_calmness           = 0.80,
-    .phosphor_persistence_ms    = 4.0,
+    .phosphor_persistence_ms    = 40.0,  // TODO(calibration): was 4.0 — suspected decimal typo
     .bloom_intensity            = 0.15,
     .edge_fade_factor           = 0.18,
 
@@ -677,7 +677,7 @@ static const HUDProfile profile_ini_a330 = {
 
     // Airbus optical: calmer, less bloom, more persistence
     .optical_calmness           = 0.90,
-    .phosphor_persistence_ms    = 3.2,
+    .phosphor_persistence_ms    = 32.0,  // TODO(calibration): was 3.2 — suspected decimal typo
     .bloom_intensity            = 0.12,
     .edge_fade_factor           = 0.20,
 
@@ -737,7 +737,7 @@ static const HUDProfile profile_fbw_a32nx = {
 
     // Airbus optical: calmer, less bloom, more persistence
     .optical_calmness           = 0.90,
-    .phosphor_persistence_ms    = 3.2,
+    .phosphor_persistence_ms    = 32.0,  // TODO(calibration): was 3.2 — suspected decimal typo
     .bloom_intensity            = 0.12,
     .edge_fade_factor           = 0.20,
 
@@ -797,7 +797,7 @@ static const HUDProfile profile_headwind_a330 = {
 
     // Airbus optical: calmer, less bloom, more persistence
     .optical_calmness           = 0.90,
-    .phosphor_persistence_ms    = 3.2,
+    .phosphor_persistence_ms    = 32.0,  // TODO(calibration): was 3.2 — suspected decimal typo
     .bloom_intensity            = 0.12,
     .edge_fade_factor           = 0.20,
 
@@ -808,6 +808,72 @@ static const HUDProfile profile_headwind_a330 = {
     .has_altitude_tape       = false,
 };
 
+
+
+// ----------------------------------------------------------------
+//  FBW A380-842 — Airbus HUD, A380-specific profile
+//  Based on Honeywell HUD for A380.  Uses Airbus HUD behavior
+//  (not Boeing HGS).  Combiner geometry approximated from A350
+//  until real A380 HUD specs are published.
+// ----------------------------------------------------------------
+static const HUDProfile profile_fbw_a380 = {
+    .aircraft_id_prefix     = "FBW A380",
+    .eye_position           = { 0.65, 0.0, -1.30 },
+    // TODO(calibration): A380 실측 필요 — 아래 값은 A350 기준 보수적 추정
+    .hfov_deg               = 32.0,   // A350 nominal; A380 may be wider
+    .vfov_deg               = 24.0,   // matched to hfov 4:3 ratio
+    .focal_length_px        = 0.0,
+    .focal_length_mm        = 0.0,
+    .combiner               = { 140, 240, 744, 544 },
+    .symbology_mask         = (uint32_t)(HUD_SYM_FPV | HUD_SYM_HORIZON |
+                                HUD_SYM_PITCH_LADDER | HUD_SYM_RUNWAY_BOX |
+                                HUD_SYM_LOCALIZER | HUD_SYM_GLIDESLOPE |
+                                HUD_SYM_DRIFT_CUE | HUD_SYM_CENTERLINE |
+                                HUD_SYM_ILS_CROSSHAIR |
+                                HUD_SYM_ALTITUDE_SCALE | HUD_SYM_SPEED_SCALE),
+    .power_lvar_name        = "L:HUD_POWER_SWITCH",
+    .scale_x                = 1.0,
+    .scale_y                = 1.0,
+    .offset_x               = 0.0,
+    .offset_y               = 0.0,
+    .ils_loc_sensitivity    = 0.14,
+    .ils_gs_sensitivity     = 0.14,
+
+    // --- v2.3.0 tuning presets — Airbus calmness (A350 baseline) ---
+    .optical_center_offset_x  = 0.0,
+    .optical_center_offset_y  = 0.0,
+    .fpv_align_offset_x       = 1.0,
+    .fpv_align_offset_y       = 0.0,
+    .runway_align_offset      = 0.0,
+    .pitch_spacing_factor     = 1.0,
+    .horizon_offset           = 0.0,
+
+    // Airbus flare: softer than Boeing (0.08 vs 0.10-0.12)
+    .flare_constant           = 0.08,
+    .flare_max_rise_px        = 60.0,
+    .flare_cue_min_size       = 10.0,
+    .flare_cue_max_size       = 42.0,
+
+    // Airbus drift cue: slightly slower response
+    .drift_cue_response       = 0.55,
+    .drift_cue_damping        = 0.70,
+
+    // Airbus turbulence: heavier damping
+    .turbulence_stab_gain     = 0.75,
+    .motion_confidence_weight = 0.85,
+
+    // Airbus optical: calmer, less bloom
+    .optical_calmness           = 0.90,
+    .phosphor_persistence_ms    = 35.0,
+    .bloom_intensity            = 0.10,
+    .edge_fade_factor           = 0.20,
+
+    .has_pmdg_style_power    = false,
+    .has_787_style_power     = false,
+    .invert_pitch            = false,
+    .has_speed_tape          = false,
+    .has_altitude_tape       = false,
+};
 
 /// Array of all profiles.
 static const HUDProfile* const g_profiles[C_HUD_NUM_PROFILES] = {
@@ -821,6 +887,7 @@ static const HUDProfile* const g_profiles[C_HUD_NUM_PROFILES] = {
     &profile_fenix_a320,
     &profile_pmdg_737_max,
     &profile_ini_a330,
+    &profile_fbw_a380,
     &profile_fbw_a32nx,
     &profile_headwind_a330,
     &profile_default,

@@ -1,4 +1,4 @@
-name: Build Installer
+name: Build Installer + WASM
 
 on:
   push:
@@ -6,13 +6,106 @@ on:
       - 'v*'
   workflow_dispatch:
 
+# ============================================================================
+#  NOTE ON WASM BUILD IN CI:
+#  The MSFS SDK (required for WASM compilation) is proprietary and cannot be
+#  freely downloaded in CI. The build-wasm job below attempts to use a cached
+#  SDK; if unavailable, it falls back to expecting a pre-built wasm artifact
+#  (uploaded manually or via a separate release pipeline).
+#
+#  Workflow for maintainers:
+#    1. Build WASM locally:  ./build_wasm.sh --sdk-path /path/to/MSFS_SDK
+#    2. Attach C_HUD_Runway.wasm to the GitHub release as a separate asset.
+#    3. The installer build job will pick it up from panel/ if present.
+# ============================================================================
+
 jobs:
+  # --------------------------------------------------------------------------
+  #  Job 1: WASM build  (requires MSFS SDK)
+  # --------------------------------------------------------------------------
+  build-wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Restore cached MSFS SDK
+        id: cache-sdk
+        uses: actions/cache@v4
+        with:
+          path: /tmp/MSFS_SDK
+          key: msfs-sdk-wasm-v1
+
+      - name: Check for MSFS SDK
+        id: check-sdk
+        shell: bash
+        run: |
+          if [ -d "/tmp/MSFS_SDK/WASM/include" ] && [ -f "/tmp/MSFS_SDK/WASM/include/MSFS/MSFS.h" ]; then
+            echo "SDK_FOUND=true" >> "$GITHUB_OUTPUT"
+            echo "MSFS SDK found in cache."
+          else
+            echo "SDK_FOUND=false" >> "$GITHUB_OUTPUT"
+            echo "MSFS SDK NOT found. See note above about manual WASM builds."
+          fi
+
+      - name: Build WASM (with SDK)
+        if: steps.check-sdk.outputs.SDK_FOUND == 'true'
+        shell: bash
+        run: |
+          chmod +x build_wasm.sh
+          ./build_wasm.sh --sdk-path /tmp/MSFS_SDK
+        env:
+          CLANG: clang++-17
+
+      - name: Verify WASM output or create placeholder
+        id: wasm-result
+        shell: bash
+        run: |
+          if [ -f "panel/C_HUD_Runway.wasm" ]; then
+            echo "WASM_BUILT=true" >> "$GITHUB_OUTPUT"
+            echo "WASM size: $(stat -c%s panel/C_HUD_Runway.wasm) bytes"
+          else
+            echo "WASM_BUILT=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=WASM not built::MSFS SDK not available. A pre-built C_HUD_Runway.wasm must be attached to the release manually."
+            # Create an empty placeholder so the release step doesn't fail
+            mkdir -p panel
+            touch panel/C_HUD_Runway.wasm
+          fi
+
+      - name: Upload WASM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: C_HUD_Runway-wasm
+          path: panel/C_HUD_Runway.wasm
+          retention-days: 90
+          if-no-files-found: warn
+
+  # --------------------------------------------------------------------------
+  #  Job 2: Build installer EXE
+  # --------------------------------------------------------------------------
   build-installer:
     runs-on: windows-latest
+    needs: build-wasm
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Download WASM artifact from build-wasm
+        uses: actions/download-artifact@v4
+        with:
+          name: C_HUD_Runway-wasm
+          path: panel/
+
+      - name: Check WASM presence
+        shell: pwsh
+        run: |
+          if (Test-Path "panel/C_HUD_Runway.wasm") {
+            $size = (Get-Item "panel/C_HUD_Runway.wasm").Length
+            Write-Host "WASM found: $size bytes"
+          } else {
+            Write-Host "::warning::C_HUD_Runway.wasm not found in panel/. Build will continue but the WASM will be missing from the installer."
+          }
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -25,28 +118,39 @@ jobs:
       - name: Build EXE with PyInstaller
         run: pyinstaller C_HUD_Install.spec
 
-      - name: Rename output
+      - name: Prepare release assets
         shell: pwsh
         run: |
           $version = if ("${{ github.ref_name }}" -match '^v') { "${{ github.ref_name }}" } else { "dev" }
-          Rename-Item "dist\C_HUD_Install.exe" "C_HUD_Install_$version.exe"
+          $versionedName = "C_HUD_Install_$version.exe"
+          # Copy the unversioned EXE to a versioned name so both are available
+          Copy-Item "dist\C_HUD_Install.exe" "dist\$versionedName"
+          Write-Host "Versioned asset: $versionedName"
+          Write-Host "Unversioned asset: C_HUD_Install.exe (kept)"
+          # Verify
+          Get-ChildItem "dist\C_HUD_Install*.exe"
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: dist/C_HUD_Install_*.exe
+          files: |
+            dist/C_HUD_Install_*.exe
+            dist/C_HUD_Install.exe
+            panel/C_HUD_Runway.wasm
           name: C_HUD_Runway ${{ github.ref_name }}
           body: |
             ## C_HUD_Runway ${{ github.ref_name }}
 
             Conformal Boeing HGS-style HUD for Microsoft Flight Simulator 2020 and 2024.
 
-            ### ⬇️ Download
-            Download **`C_HUD_Install_${{ github.ref_name }}.exe`** below ↓
+            ### ⬇️ Downloads
+            - **`C_HUD_Install.exe`** (latest) — Windows installer
+            - **`C_HUD_Install_${{ github.ref_name }}.exe`** — Windows installer (versioned)
+            - **`C_HUD_Runway.wasm`** — WASM gauge module (for manual installs)
 
             ### 🚀 Installation
-            1. Download `C_HUD_Install_${{ github.ref_name }}.exe` from the assets below
+            1. Download **`C_HUD_Install.exe`** (or the versioned asset) from the assets below
             2. Double-click to run — MSFS Community folder is detected automatically
             3. Click **설치하기**
             4. Launch MSFS and fly
@@ -61,6 +165,7 @@ jobs:
             | Asobo / WT Boeing 787-10 | Boeing HGS |
             | iniBuilds A350 | Airbus HUD |
             | FBW A32NX | Airbus HUD |
+            | FBW A380 (experimental) | Airbus HUD |
             | Headwind A330-900neo | Airbus HUD |
             | INI A330 | Airbus HUD |
             | Fenix A320 | Airbus HUD |
@@ -76,7 +181,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload artifact
+      - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: C_HUD_Install-${{ github.ref_name }}

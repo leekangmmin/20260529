@@ -80,6 +80,10 @@ static inline FLOAT64 proj_floor(FLOAT64 x) {
     return __builtin_floor(x);
 }
 
+static inline FLOAT64 proj_fmod(FLOAT64 x, FLOAT64 y) {
+    return __builtin_fmod(x, y);
+}
+
 static inline FLOAT64 proj_fmin(FLOAT64 a, FLOAT64 b) {
     return (a < b) ? a : b;
 }
@@ -106,6 +110,25 @@ static inline Vec3 proj_vec3_zero(void) {
 static inline Vec3 proj_vec3_make(FLOAT64 x, FLOAT64 y, FLOAT64 z) {
     const Vec3 v = { x, y, z };
     return v;
+}
+
+/// Zero-fill a Vec2.
+static inline Vec2 proj_vec2_zero(void) {
+    const Vec2 v = { 0.0, 0.0 };
+    return v;
+}
+
+/// Create a Vec2 from components.
+static inline Vec2 proj_vec2_make(FLOAT64 x, FLOAT64 y) {
+    const Vec2 v = { x, y };
+    return v;
+}
+
+/// Euclidean distance between two Vec2 points.
+static inline FLOAT64 proj_vec2_dist(Vec2 a, Vec2 b) {
+    const FLOAT64 dx = a.x - b.x;
+    const FLOAT64 dy = a.y - b.y;
+    return proj_sqrt(dx * dx + dy * dy);
 }
 
 /// Add two vectors.

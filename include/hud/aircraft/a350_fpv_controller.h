@@ -128,28 +128,28 @@ static inline void a350_fpv_controller_init(A350FlightPathVectorController* ctrl
     // Flare stabilization
     ctrl->flare_stab.flare_active              = false;
     ctrl->flare_stab.flare_blend               = 0.0;
-    ctrl->flare_stab.runway_reference_pos      = proj_vec3_make(0, 0, 0);
-    ctrl->flare_stab.runway_aim_point          = proj_vec3_make(0, 0, 0);
+    ctrl->flare_stab.runway_reference_pos      = proj_vec2_make(0, 0);
+    ctrl->flare_stab.runway_aim_point          = proj_vec2_make(0, 0);
     ctrl->flare_stab.runway_reference_strength = 0.0;
     ctrl->flare_stab.flare_height_m            = 100.0;
     ctrl->flare_stab.flare_stabilization_gain  = 0.85;
-    ctrl->flare_stab.stabilized_pos            = proj_vec3_make(0, 0, 0);
+    ctrl->flare_stab.stabilized_pos            = proj_vec2_make(0, 0);
     ctrl->flare_stab.initialised               = false;
 
     // Predictive alignment
     ctrl->predictive_align.alignment_angle_deg     = 0.0;
     ctrl->predictive_align.alignment_quality       = 0.0;
-    ctrl->predictive_align.predicted_touchdown_pos = proj_vec3_make(0, 0, 0);
+    ctrl->predictive_align.predicted_touchdown_pos = proj_vec2_make(0, 0);
     ctrl->predictive_align.crosswind_component_ms  = 0.0;
-    ctrl->predictive_align.crosswind_compensation  = proj_vec3_make(0, 0, 0);
+    ctrl->predictive_align.crosswind_compensation  = proj_vec2_make(0, 0);
     ctrl->predictive_align.runway_slope_deg        = 0.0;
     ctrl->predictive_align.valid                   = false;
 
     // Outputs
-    ctrl->final_screen_pos       = proj_vec3_make(0, 0, 0);
-    ctrl->raw_screen_pos         = proj_vec3_make(0, 0, 0);
-    ctrl->filtered_screen_pos    = proj_vec3_make(0, 0, 0);
-    ctrl->flare_adjusted_pos     = proj_vec3_make(0, 0, 0);
+    ctrl->final_screen_pos       = proj_vec2_make(0, 0);
+    ctrl->raw_screen_pos         = proj_vec2_make(0, 0);
+    ctrl->filtered_screen_pos    = proj_vec2_make(0, 0);
+    ctrl->flare_adjusted_pos     = proj_vec2_make(0, 0);
     ctrl->stability_score        = 1.0;
     ctrl->fpv_quality            = 1.0;
     ctrl->on_screen              = false;
@@ -207,7 +207,7 @@ void a350_fpv_controller_compute(
 /// Get the final stabilised FPV screen position.
 static inline Vec2 a350_fpv_controller_get_pos(
     const A350FlightPathVectorController* ctrl) {
-    if (ctrl == 0) return proj_vec3_make(0, 0, 0);
+    if (ctrl == 0) return proj_vec2_make(0, 0);
     return ctrl->final_screen_pos;
 }
 

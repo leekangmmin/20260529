@@ -681,15 +681,33 @@ class FileCopier:
                     break
 
             if not wasm_copied:
-                logger.warning("No WASM file found to copy. Integration will be incomplete.")
+                # The WASM is the HUD engine — without it nothing renders. Fail
+                # loudly instead of silently producing a broken, empty package.
+                logger.error(
+                    "C_HUD_Runway.wasm not found in any of: "
+                    f"{[str(s) for s in wasm_sources]}. "
+                    "The compiled WASM gauge must be present before installing."
+                )
+                return False
 
-            # Copy HTML/JS overlay files
-            panel_dir = installer_dir / "panel"
-            if panel_dir.exists():
-                for fname in ["hud_overlay.html", "hud_overlay.js", "conformal_renderer.js"]:
-                    src = panel_dir / fname
-                    if src.exists():
-                        shutil.copy2(src, sim_root / "panel" / "HUD" / fname)
+            # Copy HTML/JS overlay files (these live under panel/HUD/, not panel/)
+            overlay_src_dir = installer_dir / "panel" / "HUD"
+            overlay_files = ["hud_overlay.html", "hud_overlay.js", "conformal_renderer.js"]
+            missing_overlay = []
+            for fname in overlay_files:
+                src = overlay_src_dir / fname
+                if src.exists():
+                    shutil.copy2(src, sim_root / "panel" / "HUD" / fname)
+                    logger.info(f"Copied overlay: {fname}")
+                else:
+                    missing_overlay.append(fname)
+
+            if missing_overlay:
+                logger.error(
+                    f"Missing overlay file(s) in {overlay_src_dir}: {missing_overlay}. "
+                    "HUD overlay would not render. Aborting."
+                )
+                return False
 
             # Copy panel.cfg from our template
             panel_cfg_src = installer_dir / "panel.cfg"
@@ -721,19 +739,6 @@ class FileCopier:
                     encoding="utf-8",
                 )
 
-            # Create model XML
-            model_xml = sim_root / "model" / "C_HUD_Runway.xml"
-            if not model_xml.exists():
-                model_xml.write_text(
-                    '<?xml version="1.0" encoding="utf-8"?>\n'
-                    '<ModelInfo>\n'
-                    '  <LODS>\n'
-                    '    <LOD minSize="0" ModelFile="C_HUD_Runway.bin"/>\n'
-                    '  </LODS>\n'
-                    '</ModelInfo>\n',
-                    encoding="utf-8",
-                )
-
             # Create texture.cfg
             texture_cfg = sim_root / "texture" / "texture.cfg"
             if not texture_cfg.exists():
@@ -744,22 +749,23 @@ class FileCopier:
                     encoding="utf-8",
                 )
 
-            # Create layout.json for the HGS package
+            # Create layout.json for the HGS package.
+            # Build it from the files that ACTUALLY exist on disk so MSFS package
+            # integrity verification doesn't reject the package for phantom entries
+            # (previously it referenced model/*.bin and texture/*.png that were
+            # never created).
             layout_path = package_root / "layout.json"
-            layout_content = {
-                "content": [
-                    {"path": f"SimObjects/Airplanes/C_HUD_Runway/panel/panel.cfg", "size": 0, "date": int(time.time())},
-                    {"path": f"SimObjects/Airplanes/C_HUD_Runway/panel/C_HUD_Runway.wasm", "size": 0, "date": int(time.time())},
-                    {"path": f"SimObjects/Airplanes/C_HUD_Runway/panel/HUD/hud_overlay.html", "size": 0, "date": int(time.time())},
-                    {"path": f"SimObjects/Airplanes/C_HUD_Runway/panel/HUD/hud_overlay.js", "size": 0, "date": int(time.time())},
-                    {"path": f"SimObjects/Airplanes/C_HUD_Runway/panel/HUD/conformal_renderer.js", "size": 0, "date": int(time.time())},
-                    {"path": f"SimObjects/Airplanes/C_HUD_Runway/aircraft.cfg", "size": 0, "date": int(time.time())},
-                    {"path": f"SimObjects/Airplanes/C_HUD_Runway/model/C_HUD_Runway.xml", "size": 0, "date": int(time.time())},
-                    {"path": f"SimObjects/Airplanes/C_HUD_Runway/model/C_HUD_Runway.bin", "size": 0, "date": int(time.time())},
-                    {"path": f"SimObjects/Airplanes/C_HUD_Runway/texture/texture.cfg", "size": 0, "date": int(time.time())},
-                    {"path": f"SimObjects/Airplanes/C_HUD_Runway/texture/HUD_Overlay.png", "size": 0, "date": int(time.time())},
-                ]
-            }
+            content_entries = []
+            for f in sorted(package_root.rglob("*")):
+                if f.is_file() and f.name != "layout.json":
+                    rel = f.relative_to(package_root).as_posix()
+                    stat = f.stat()
+                    content_entries.append({
+                        "path": rel,
+                        "size": stat.st_size,
+                        "date": int(stat.st_mtime * 1e7) + 116444736000000000,  # FILETIME
+                    })
+            layout_content = {"content": content_entries}
             layout_path.write_text(json.dumps(layout_content, indent=2), encoding="utf-8")
 
             logger.info(f"Copied HGS package to {package_root}")

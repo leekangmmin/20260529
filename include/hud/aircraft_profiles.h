@@ -26,7 +26,8 @@
 //  geometrically correct imagery for each aircraft's specific HUD optics.
 // ============================================================================
 
-#include "../module.h"   // Vec3, Mat4, FLOAT64, etc.
+#include "../module.h"       // Vec3, Mat4, FLOAT64, etc.
+#include "../projection.h"   // PROJ_DEG2RAD, proj_tan (used by hud_focal_from_fov)
 
 // ============================================================================
 //  1.  HUD Eye Position  (offset from aircraft CG, metres)
@@ -182,15 +183,13 @@ typedef struct HUDProfile {
 // ============================================================================
 
 /// Number of built‑in HUD profiles.
-#define C_HUD_NUM_PROFILES  13
+#define C_HUD_NUM_PROFILES  14
 
 /// Retrieve the HUD profile matching a given aircraft model string.
 /// Returns NULL if no match is found.
-extern const HUDProfile profile_fenix_a320;
-extern const HUDProfile profile_ini_a330;
-extern const HUDProfile profile_fbw_a32nx;
-extern const HUDProfile profile_headwind_a330;
-extern const HUDProfile profile_pmdg_737_max;
+/// NOTE: individual profile objects have internal linkage (static, defined in
+/// aircraft_profiles.cpp) and are reached only via the accessors below — they
+/// are intentionally NOT declared extern here.
 const HUDProfile* hud_profile_match(const char* aircraft_id);
 
 /// Get a profile by index (0 … C_HUD_NUM_PROFILES - 1).
@@ -198,6 +197,11 @@ const HUDProfile* hud_profile_by_index(int index);
 
 /// Return the default HUD profile (used when no aircraft match is found).
 const HUDProfile* hud_profile_default(void);
+
+/// Initialise all built-in profiles (computes derived fields such as
+/// focal_length_px from FOV).  Defined in aircraft_profiles.cpp; called once
+/// from the gauge POST_INSTALL callback.
+void hud_profiles_init_all(void);
 
 // ============================================================================
 //  6.  Profile‑aware helpers (v2.3.0)
@@ -223,8 +227,8 @@ static inline FLOAT64 hud_profile_optical_cy(const HUDProfile* p,
 static inline Vec2 hud_combiner_to_panel(const HUDCombinerRect* comb,
                                           Vec2 local_px) {
     Vec2 out;
-    out.x = (FLOAT64)comb->x + local_px;
-    out.y = (FLOAT64)comb->y + local_px;
+    out.x = (FLOAT64)comb->x + local_px.x;
+    out.y = (FLOAT64)comb->y + local_px.y;
     return out;
 }
 

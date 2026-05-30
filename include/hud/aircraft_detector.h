@@ -28,8 +28,8 @@
 //    · Everything else                → Generic safe mode
 // ============================================================================
 
-#include "ihud_aircraft_behavior.h"
-#include "../aircraft_profiles.h"
+#include "aircraft/ihud_aircraft_behavior.h"
+#include "aircraft_profiles.h"
 
 // ============================================================================
 //  1.  Detection result

@@ -12,6 +12,20 @@
 #include "hud/aircraft_profiles.h"
 
 // ============================================================================
+//  Cross-translation-unit declarations
+//  (definitions live in main.cpp; declared here so the gauge callbacks below
+//   can call them.)
+// ============================================================================
+bool module_update_read_vars(FsContext ctx);
+bool module_update_project(const sGaugeDrawData* dd);
+void module_update_publish(const sGaugeDrawData* dd);
+
+// SimVar token globals shared with the projection pipeline (defined in main.cpp)
+extern GAUGE_VAR g_simvar_plane_latitude;
+extern GAUGE_VAR g_simvar_plane_longitude;
+extern GAUGE_VAR g_simvar_plane_heading_deg_true;
+
+// ============================================================================
 //  Aircraft identification – HUD-capable model allowlist
 // ============================================================================
 
